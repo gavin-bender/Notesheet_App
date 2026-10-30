@@ -1,3 +1,9 @@
+export interface NotesheetCategory {
+  id: string;
+  name: string;
+  color: string; // Hex color e.g. '#2563eb'
+}
+
 export interface NotesheetItem {
   id: string;
   sourceFile: string;      // Vault relative path (e.g. "Physics/Formulas.md"), empty if standalone
@@ -8,6 +14,7 @@ export interface NotesheetItem {
   order: number;           // Sort order within column
   updatedAt: number;       // Timestamp of last update
   color?: string;          // Optional card accent color
+  categoryId?: string;     // Assigned category id
 }
 
 export interface NotesheetPage {
@@ -27,6 +34,7 @@ export interface NotesheetSettings {
   showCardTitles: boolean; // show title header on cards
   showSourceLinks: boolean;// show link back to source note
   showPageNumbers: boolean;// show Page 1: Front / Page 2: Back in print footer
+  showCategoryTitles: boolean; // show or hide category title banners/badges
 }
 
 export interface NotesheetData {
@@ -34,6 +42,7 @@ export interface NotesheetData {
   id: string;
   title: string;
   settings: NotesheetSettings;
+  categories: NotesheetCategory[];
   pages: NotesheetPage[];  // Front and Back pages by default
 }
 
@@ -48,6 +57,14 @@ export interface PluginSettings {
   confirmCardDelete: boolean;
 }
 
+export const DEFAULT_CATEGORIES: NotesheetCategory[] = [
+  { id: 'cat-formulas', name: 'Formulas', color: '#2563eb' },       // Blue
+  { id: 'cat-definitions', name: 'Definitions', color: '#16a34a' },  // Green
+  { id: 'cat-theorems', name: 'Theorems', color: '#9333ea' },        // Purple
+  { id: 'cat-examples', name: 'Examples', color: '#d97706' },        // Amber
+  { id: 'cat-constants', name: 'Constants', color: '#dc2626' }       // Red
+];
+
 export const DEFAULT_NOTESHEET_SETTINGS: NotesheetSettings = {
   pageSize: 'letter',
   orientation: 'portrait',
@@ -59,6 +76,7 @@ export const DEFAULT_NOTESHEET_SETTINGS: NotesheetSettings = {
   showCardTitles: true,
   showSourceLinks: true,
   showPageNumbers: true,
+  showCategoryTitles: true,
 };
 
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
@@ -78,6 +96,7 @@ export function createDefaultNotesheetData(title = 'Exam Notesheet'): NotesheetD
     id: 'sheet-' + Date.now().toString(36),
     title,
     settings: { ...DEFAULT_NOTESHEET_SETTINGS },
+    categories: [...DEFAULT_CATEGORIES],
     pages: [
       {
         id: 'front',

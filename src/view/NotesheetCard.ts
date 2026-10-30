@@ -1,5 +1,5 @@
-import { App, Component, MarkdownRenderer, Notice, TFile, setIcon } from 'obsidian';
-import { NotesheetItem, NotesheetSettings } from '../types';
+import { App, Component, MarkdownRenderer, Notice, TFile, setIcon, Menu } from 'obsidian';
+import { NotesheetItem, NotesheetSettings, NotesheetCategory } from '../types';
 import { SyncManager } from '../sync/SyncManager';
 
 export interface CardActionCallbacks {
@@ -7,6 +7,8 @@ export interface CardActionCallbacks {
   onDelete: (item: NotesheetItem) => Promise<void>;
   onMovePage: (item: NotesheetItem, targetPageId: string) => Promise<void>;
   onMoveOrder: (item: NotesheetItem, direction: 'up' | 'down') => Promise<void>;
+  onCategoryChange: (item: NotesheetItem, categoryId?: string) => Promise<void>;
+  onOpenCategoryManager?: () => void;
 }
 
 export class NotesheetCard {
@@ -15,6 +17,7 @@ export class NotesheetCard {
   private syncManager: SyncManager;
   private item: NotesheetItem;
   private settings: NotesheetSettings;
+  private categories: NotesheetCategory[];
   private currentPageId: string;
   private callbacks: CardActionCallbacks;
   private cardEl: HTMLElement;
@@ -26,6 +29,7 @@ export class NotesheetCard {
     syncManager: SyncManager,
     item: NotesheetItem,
     settings: NotesheetSettings,
+    categories: NotesheetCategory[],
     currentPageId: string,
     callbacks: CardActionCallbacks
   ) {
@@ -34,16 +38,25 @@ export class NotesheetCard {
     this.syncManager = syncManager;
     this.item = item;
     this.settings = settings;
+    this.categories = categories;
     this.currentPageId = currentPageId;
     this.callbacks = callbacks;
   }
 
   public render(container: HTMLElement): HTMLElement {
+    const category = this.categories.find(c => c.id === this.item.categoryId);
+
     this.cardEl = container.createDiv({
-      cls: `notesheet-card ${this.settings.showBorders ? 'has-border' : 'no-border'}`
+      cls: `notesheet-card ${this.settings.showBorders ? 'has-border' : 'no-border'} ${category ? 'has-category' : ''}`
     });
     this.cardEl.dataset.itemId = this.item.id;
     this.cardEl.setAttribute('draggable', 'true');
+
+    if (category) {
+      this.cardEl.style.setProperty('--card-cat-color', category.color);
+    } else {
+      this.cardEl.style.removeProperty('--card-cat-color');
+    }
 
     if (this.isEditing) {
       this.renderEditMode();
@@ -56,17 +69,52 @@ export class NotesheetCard {
 
   private renderViewMode(): void {
     this.cardEl.empty();
+    const category = this.categories.find(c => c.id === this.item.categoryId);
+
+    // Optional Category Title Header Banner (if category exists and showCategoryTitles is enabled)
+    if (category && this.settings.showCategoryTitles) {
+      const banner = this.cardEl.createDiv({ cls: 'notesheet-category-banner' });
+      banner.style.backgroundColor = `${category.color}18`; // 10% opacity tint
+      banner.style.borderColor = category.color;
+
+      const dot = banner.createSpan({ cls: 'category-color-dot' });
+      dot.style.backgroundColor = category.color;
+
+      const title = banner.createSpan({ text: category.name, cls: 'category-banner-title' });
+      title.style.color = category.color;
+    }
 
     // Top action bar
     const headerEl = this.cardEl.createDiv({ cls: 'notesheet-card-header' });
 
-    // Left side: Title & Sync Badge
+    // Left side: Title, Category pill & Sync Badge
     const headerLeft = headerEl.createDiv({ cls: 'notesheet-card-header-left' });
 
     // Drag handle icon
     const dragHandle = headerLeft.createSpan({ cls: 'notesheet-card-drag-handle' });
     setIcon(dragHandle, 'grip-vertical');
     dragHandle.title = 'Drag to reorder card';
+
+    // Category Quick-Pill (Click to switch category)
+    const catPill = headerLeft.createSpan({
+      cls: `notesheet-card-category-pill ${category ? 'active' : ''}`
+    });
+    if (category) {
+      const dot = catPill.createSpan({ cls: 'category-color-dot' });
+      dot.style.backgroundColor = category.color;
+      if (!this.settings.showCategoryTitles) {
+        catPill.createSpan({ text: category.name });
+      }
+      catPill.title = `Category: ${category.name} (Click to change)`;
+    } else {
+      catPill.createSpan({ text: '+ Category' });
+      catPill.title = 'Assign a category to color-code this card';
+    }
+
+    catPill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.openCategoryMenu(e);
+    });
 
     if (this.settings.showCardTitles && this.item.title) {
       const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title', text: this.item.title });
@@ -150,18 +198,72 @@ export class NotesheetCard {
     );
   }
 
+  private openCategoryMenu(event: MouseEvent): void {
+    const menu = new Menu();
+
+    menu.addItem(item => {
+      item
+        .setTitle('None (No Category)')
+        .setChecked(!this.item.categoryId)
+        .onClick(async () => {
+          this.item.categoryId = undefined;
+          await this.callbacks.onCategoryChange(this.item, undefined);
+        });
+    });
+
+    menu.addSeparator();
+
+    for (const cat of this.categories) {
+      menu.addItem(item => {
+        item
+          .setTitle(cat.name)
+          .setChecked(this.item.categoryId === cat.id)
+          .onClick(async () => {
+            this.item.categoryId = cat.id;
+            await this.callbacks.onCategoryChange(this.item, cat.id);
+          });
+      });
+    }
+
+    if (this.callbacks.onOpenCategoryManager) {
+      menu.addSeparator();
+      menu.addItem(item => {
+        item
+          .setTitle('🎨 Manage Categories...')
+          .setIcon('palette')
+          .onClick(() => {
+            this.callbacks.onOpenCategoryManager?.();
+          });
+      });
+    }
+
+    menu.showAtMouseEvent(event);
+  }
+
   private renderEditMode(): void {
     this.cardEl.empty();
 
     const editWrapper = this.cardEl.createDiv({ cls: 'notesheet-card-edit-wrapper' });
 
-    // Title input
-    const titleInput = editWrapper.createEl('input', {
+    // Top inputs: Title & Category Selector
+    const inputsRow = editWrapper.createDiv({ cls: 'notesheet-card-inputs-row' });
+
+    const titleInput = inputsRow.createEl('input', {
       type: 'text',
       cls: 'notesheet-card-title-input',
       value: this.item.title || ''
     });
     titleInput.placeholder = 'Card Title (optional)';
+
+    // Category dropdown
+    const catSelect = inputsRow.createEl('select', { cls: 'notesheet-select' });
+    const defaultOpt = catSelect.createEl('option', { text: '-- No Category --', value: '' });
+    if (!this.item.categoryId) defaultOpt.selected = true;
+
+    for (const cat of this.categories) {
+      const opt = catSelect.createEl('option', { text: `● ${cat.name}`, value: cat.id });
+      if (this.item.categoryId === cat.id) opt.selected = true;
+    }
 
     // Source note notification
     if (this.item.sourceFile && this.item.blockId) {
@@ -193,10 +295,12 @@ export class NotesheetCard {
     const handleSave = async () => {
       const newContent = textarea.value.trim();
       const newTitle = titleInput.value.trim();
+      const newCatId = catSelect.value || undefined;
 
       const contentChanged = newContent !== this.item.content;
       this.item.title = newTitle;
       this.item.content = newContent;
+      this.item.categoryId = newCatId;
       this.item.updatedAt = Date.now();
 
       if (contentChanged && this.item.sourceFile && this.item.blockId) {
@@ -236,7 +340,6 @@ export class NotesheetCard {
       const leaf = this.app.workspace.getLeaf(false);
       await leaf.openFile(file);
 
-      // If we have a blockId, try to scroll to it
       if (this.item.blockId) {
         new Notice(`Opened "${file.basename}" (^${this.item.blockId})`);
       }

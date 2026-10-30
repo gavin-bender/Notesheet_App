@@ -6,6 +6,7 @@ import { BlockManager } from '../sync/BlockManager';
 import { NotesheetToolbar } from './Toolbar';
 import { NotesheetCard } from './NotesheetCard';
 import { BlockPickerModal } from './BlockPickerModal';
+import { CategoryManagerModal } from './CategoryManagerModal';
 
 export const NOTESHEET_VIEW_TYPE = 'notesheet-view';
 
@@ -138,6 +139,12 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       onTitleChange: async (newTitle) => {
         this.data.title = newTitle;
         await this.saveData();
+      },
+      onOpenCategoryManager: () => {
+        new CategoryManagerModal(this.app, this.data, async () => {
+          await this.saveData();
+          await this.render();
+        }).open();
       }
     });
 
@@ -253,6 +260,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         this.syncManager,
         item,
         this.data.settings,
+        this.data.categories,
         page.id,
         {
           onUpdate: async (updatedItem) => {
@@ -291,6 +299,17 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
               await this.saveData();
               await this.render();
             }
+          },
+          onCategoryChange: async (catItem, categoryId) => {
+            catItem.categoryId = categoryId;
+            await this.saveData();
+            await this.render();
+          },
+          onOpenCategoryManager: () => {
+            new CategoryManagerModal(this.app, this.data, async () => {
+              await this.saveData();
+              await this.render();
+            }).open();
           }
         }
       );

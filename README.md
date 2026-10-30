@@ -7,6 +7,11 @@ An exam notesheet and cheat sheet organizer for [Obsidian](https://obsidian.md).
 ## ✨ Features
 
 - **2 Pages by Default (Front & Back)**: Designed specifically for exams that allow "one sheet of paper, front and back". Easily switch between Page 1 (Front), Page 2 (Back), or Dual View.
+- **Color-Coded Categories**:
+  - Assign categories (e.g. *Formulas*, *Definitions*, *Theorems*, *Examples*, *Constants*, or custom ones) to any card.
+  - Changes the card's accent color (top border stripe and color badges) for instant visual scanning.
+  - **Category Titles Toggle**: Show or hide category titles on the sheet with a single click in the toolbar (hide to maximize cramming density, show for clear organization).
+  - Built-in Category Manager modal to create custom categories, rename, and pick colors.
 - **Select Blocks from Any Note**:
   - Right-click any selection or block in an open note: choose **"Notesheet: Add to Front (Page 1)"** or **"Notesheet: Add to Back (Page 2)"**.
   - Use the Command Palette: `Notesheet: Add selected block to Notesheet (Front / Page 1)`.

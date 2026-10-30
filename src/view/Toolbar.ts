@@ -9,6 +9,7 @@ export interface ToolbarCallbacks {
   onPrint: () => void;
   onSyncAll: () => Promise<void>;
   onTitleChange: (newTitle: string) => Promise<void>;
+  onOpenCategoryManager: () => void;
 }
 
 export class NotesheetToolbar {
@@ -76,6 +77,14 @@ export class NotesheetToolbar {
     // Right action buttons
     const actionsContainer = row1.createDiv({ cls: 'notesheet-toolbar-actions' });
 
+    // Manage Categories button
+    const catBtn = actionsContainer.createEl('button', {
+      cls: 'notesheet-btn-toolbar',
+      text: '🎨 Categories'
+    });
+    catBtn.title = 'Add, edit, or color-code categories';
+    catBtn.addEventListener('click', () => this.callbacks.onOpenCategoryManager());
+
     // Add Card button
     const addCardBtn = actionsContainer.createEl('button', {
       cls: 'notesheet-btn-toolbar',
@@ -112,7 +121,7 @@ export class NotesheetToolbar {
     printBtn.title = 'Print or export front & back pages for exam';
     printBtn.addEventListener('click', () => this.callbacks.onPrint());
 
-    // Row 2: Typography, Columns, Margins & Exam Print Density Controls
+    // Row 2: Typography, Columns, Margins, Categories & Exam Print Density Controls
     const row2 = this.containerEl.createDiv({ cls: 'notesheet-toolbar-row formatting-row' });
 
     // Columns selector
@@ -193,6 +202,20 @@ export class NotesheetToolbar {
     borderLabel.addEventListener('click', () => {
       borderCheck.checked = !borderCheck.checked;
       borderCheck.dispatchEvent(new Event('change'));
+    });
+
+    // Toggle Category Titles (Show/Hide)
+    const catTitlesGroup = row2.createDiv({ cls: 'toolbar-group' });
+    const catCheck = catTitlesGroup.createEl('input', { type: 'checkbox', cls: 'notesheet-checkbox' });
+    catCheck.checked = this.data.settings.showCategoryTitles;
+    const catLabel = catTitlesGroup.createSpan({ text: 'Category Titles', cls: 'checkbox-label' });
+    catCheck.addEventListener('change', async () => {
+      this.data.settings.showCategoryTitles = catCheck.checked;
+      await this.callbacks.onSettingChange();
+    });
+    catLabel.addEventListener('click', () => {
+      catCheck.checked = !catCheck.checked;
+      catCheck.dispatchEvent(new Event('change'));
     });
 
     return this.containerEl;

@@ -106,6 +106,34 @@ const deserialized = store.deserialize(serialized);
 assert(deserialized.title === 'PHYS 240 Final Exam', `Deserialized title matches: ${deserialized.title}`);
 assert(deserialized.pages.length === 2, 'Deserialized has 2 pages (front & back)');
 
+// Test 6: Categories Feature
+console.log('\nTest Suite 6: Categories and Color Assignment');
+assert(defaultData.categories && defaultData.categories.length >= 5, `Has default category presets (count: ${defaultData.categories.length})`);
+assert(defaultData.settings.showCategoryTitles === true, 'Category titles enabled by default');
+
+const formulaCat = defaultData.categories.find(c => c.name === 'Formulas');
+assert(!!formulaCat, `Found "Formulas" category with color ${formulaCat?.color}`);
+
+// Assign category to an item
+defaultData.pages[0].items.push({
+  id: 'item-cat-test',
+  sourceFile: 'PHYS240/Lecture.md',
+  blockId: 'ns-newton2',
+  title: 'Newton Second Law',
+  content: 'F = ma',
+  column: 0,
+  order: 1,
+  categoryId: formulaCat.id,
+  updatedAt: Date.now()
+});
+
+const catSerialized = store.serialize(defaultData);
+const catDeserialized = store.deserialize(catSerialized);
+const testItem = catDeserialized.pages[0].items.find(i => i.id === 'item-cat-test');
+
+assert(testItem?.categoryId === formulaCat.id, `Card retained assigned categoryId: ${testItem?.categoryId}`);
+assert(catDeserialized.categories.some(c => c.id === formulaCat.id), 'Categories preserved through serialization');
+
 console.log(`\n========================================`);
 console.log(`TEST SUMMARY: ${passed} passed, ${failed} failed.`);
 console.log(`========================================\n`);

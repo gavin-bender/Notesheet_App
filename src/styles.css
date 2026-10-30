@@ -151,6 +151,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .toolbar-group {
@@ -169,6 +170,16 @@
   border-radius: 4px;
   border: 1px solid var(--notesheet-border-color);
   background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+.notesheet-checkbox {
+  cursor: pointer;
+}
+
+.checkbox-label {
+  cursor: pointer;
+  font-weight: 500;
   color: var(--text-normal);
 }
 
@@ -311,7 +322,7 @@
 }
 
 /* ========================================================
-   NOTESHEET CARDS
+   NOTESHEET CARDS & CATEGORIES
    ======================================================== */
 
 .notesheet-card {
@@ -323,7 +334,8 @@
   box-sizing: border-box;
   break-inside: avoid;
   page-break-inside: avoid;
-  transition: box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  overflow: hidden;
 }
 
 .notesheet-card.has-border {
@@ -338,10 +350,44 @@
   background: var(--background-secondary-alt);
 }
 
+/* When category is assigned: color accent */
+.notesheet-card.has-category {
+  border-top: 3px solid var(--card-cat-color) !important;
+}
+
 .notesheet-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+/* Category Title Banner */
+.notesheet-category-banner {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  margin: -6px -8px 5px -8px;
+  border-bottom: 1px solid transparent;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.category-color-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.category-banner-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Card Header */
 .notesheet-card-header {
   display: flex;
   justify-content: space-between;
@@ -371,6 +417,33 @@
 .notesheet-card-drag-handle svg {
   width: 12px;
   height: 12px;
+}
+
+/* Category Quick Pill */
+.notesheet-card-category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--background-secondary);
+  border: 1px solid var(--notesheet-border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.notesheet-card-category-pill:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+.notesheet-card-category-pill.active {
+  color: var(--text-normal);
+  font-weight: 600;
 }
 
 .notesheet-card-title {
@@ -498,7 +571,14 @@
   gap: 6px;
 }
 
+.notesheet-card-inputs-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .notesheet-card-title-input {
+  flex: 1;
   font-size: 11px;
   font-weight: 600;
   padding: 3px 6px;
@@ -536,6 +616,86 @@
   display: flex;
   justify-content: flex-end;
   gap: 6px;
+}
+
+/* ========================================================
+   CATEGORY MANAGER MODAL
+   ======================================================== */
+
+.notesheet-category-modal {
+  max-width: 520px;
+}
+
+.category-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.category-manager-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--notesheet-border-color);
+}
+
+.category-color-picker {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+
+.category-name-input {
+  flex: 1;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--notesheet-border-color);
+  border-radius: 4px;
+}
+
+.category-color-presets {
+  display: flex;
+  gap: 4px;
+}
+
+.color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.25);
+}
+
+.delete-cat-btn {
+  font-size: 12px;
+  padding: 4px 6px;
+}
+
+.category-add-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--notesheet-border-color);
+}
+
+.new-category-input {
+  flex: 1;
 }
 
 /* Empty State */
@@ -649,6 +809,7 @@
   .notesheet-card-drag-handle,
   .notesheet-empty-state,
   .notesheet-card-source-badge,
+  .notesheet-card-category-pill,
   .drag-target-active {
     display: none !important;
   }
@@ -700,9 +861,22 @@
   .notesheet-card {
     background: #ffffff !important;
     color: #000000 !important;
-    border-color: #bbbbbb !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+
+  .notesheet-card.has-category {
+    border-top: 2.5pt solid var(--card-cat-color) !important;
+  }
+
+  .notesheet-category-banner {
+    background: #f3f4f6 !important;
+    color: #000000 !important;
+    border-color: #cccccc !important;
+  }
+
+  .category-banner-title {
+    color: #000000 !important;
   }
 
   .notesheet-card-title {

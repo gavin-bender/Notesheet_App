@@ -1,5 +1,5 @@
 import { App, TFile, normalizePath, Notice } from 'obsidian';
-import { NotesheetData, createDefaultNotesheetData } from '../types';
+import { NotesheetData, createDefaultNotesheetData, DEFAULT_CATEGORIES } from '../types';
 
 export class NotesheetStore {
   private app: App;
@@ -38,6 +38,16 @@ ${jsonStr}
       try {
         const parsed = JSON.parse(match[1]) as NotesheetData;
         if (parsed && parsed.pages) {
+          // Backward compatibility for categories
+          if (!parsed.categories || !Array.isArray(parsed.categories)) {
+            parsed.categories = [...DEFAULT_CATEGORIES];
+          }
+          if (parsed.settings) {
+            if (parsed.settings.showCategoryTitles === undefined) {
+              parsed.settings.showCategoryTitles = true;
+            }
+          }
+
           // Normalize and ensure 2 pages minimum (Front and Back)
           if (!parsed.pages.some(p => p.id === 'front')) {
             parsed.pages.unshift({ id: 'front', name: 'Front (Page 1)', items: [] });
@@ -58,6 +68,12 @@ ${jsonStr}
     try {
       const parsed = JSON.parse(content) as NotesheetData;
       if (parsed && parsed.pages) {
+        if (!parsed.categories || !Array.isArray(parsed.categories)) {
+          parsed.categories = [...DEFAULT_CATEGORIES];
+        }
+        if (parsed.settings && parsed.settings.showCategoryTitles === undefined) {
+          parsed.settings.showCategoryTitles = true;
+        }
         return parsed;
       }
     } catch {
