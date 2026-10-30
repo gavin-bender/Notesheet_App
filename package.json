@@ -1,0 +1,28 @@
+{
+  "name": "obsidian-notesheet",
+  "version": "1.0.0",
+  "description": "Exam Notesheet maker for Obsidian: organize note blocks onto 2-page front/back sheets with two-way sync and print optimization.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "notesheet",
+    "cheat-sheet",
+    "exam",
+    "two-way-sync"
+  ],
+  "author": "Gavin Bender",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.1",
+    "obsidian": "^1.5.7",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5"
+  }
+}

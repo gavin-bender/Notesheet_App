@@ -1,0 +1,724 @@
+/* ========================================================
+   OBSIDIAN NOTESHEET PLUGIN STYLES
+   ======================================================== */
+
+:root {
+  --notesheet-font-size: 8.5pt;
+  --notesheet-columns: 2;
+  --notesheet-card-bg: var(--background-primary);
+  --notesheet-sheet-bg: var(--background-primary-alt);
+  --notesheet-border-color: var(--background-modifier-border);
+}
+
+.notesheet-view-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--background-secondary);
+  font-family: var(--font-text);
+}
+
+/* ========================================================
+   TOOLBAR
+   ======================================================== */
+
+.notesheet-toolbar {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background-primary);
+  border-bottom: 1px solid var(--notesheet-border-color);
+  padding: 8px 16px;
+  gap: 8px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.notesheet-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.notesheet-title-container {
+  display: flex;
+  align-items: center;
+}
+
+.notesheet-title-input {
+  font-size: 16px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text-normal);
+  transition: all 0.2s ease;
+}
+
+.notesheet-title-input:hover,
+.notesheet-title-input:focus {
+  background: var(--background-modifier-form-field);
+  border-color: var(--interactive-accent);
+}
+
+/* Navigation Tabs */
+.notesheet-nav-tabs {
+  display: flex;
+  background: var(--background-secondary);
+  padding: 3px;
+  border-radius: 8px;
+  gap: 4px;
+}
+
+.notesheet-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.notesheet-tab-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.notesheet-tab-btn.active {
+  background: var(--background-primary);
+  color: var(--interactive-accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.tab-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Actions */
+.notesheet-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notesheet-btn-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--notesheet-border-color);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.notesheet-btn-toolbar:hover {
+  background: var(--background-modifier-hover);
+}
+
+.notesheet-btn-toolbar.print-btn {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  font-weight: 600;
+}
+
+.notesheet-btn-toolbar.print-btn:hover {
+  filter: brightness(1.1);
+}
+
+/* Formatting Row */
+.formatting-row {
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px dashed var(--notesheet-border-color);
+  padding-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-label {
+  font-weight: 600;
+}
+
+.notesheet-select {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--notesheet-border-color);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+.rotating svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ========================================================
+   PAGES WRAPPER & REALISTIC PAPER CANVAS
+   ======================================================== */
+
+.notesheet-pages-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.notesheet-page-sheet {
+  background-color: var(--background-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+/* Letter Page Dimensions (Ratio: 8.5 x 11) */
+.notesheet-page-sheet.paper-letter {
+  width: 816px;
+  min-height: 1056px;
+}
+
+/* A4 Page Dimensions (Ratio: 210 x 297mm) */
+.notesheet-page-sheet.paper-a4 {
+  width: 794px;
+  min-height: 1123px;
+}
+
+/* Margin Variations */
+.notesheet-page-sheet.margin-tight {
+  padding: 18px;
+}
+
+.notesheet-page-sheet.margin-compact {
+  padding: 26px;
+}
+
+.notesheet-page-sheet.margin-normal {
+  padding: 38px;
+}
+
+/* Page Header & Stats */
+.notesheet-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--notesheet-border-color);
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+
+.page-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--interactive-accent);
+}
+
+.page-stats {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.notesheet-page-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--notesheet-border-color);
+  padding-top: 6px;
+  margin-top: auto;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* ========================================================
+   COLUMNS GRID & DENSE LAYOUT
+   ======================================================== */
+
+.notesheet-columns-grid {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+  align-items: start;
+}
+
+.notesheet-columns-grid.cols-1 {
+  grid-template-columns: 1fr;
+}
+
+.notesheet-columns-grid.cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.notesheet-columns-grid.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.notesheet-columns-grid.cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.notesheet-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 200px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.notesheet-column.drag-target-active {
+  background-color: var(--background-modifier-hover);
+  border: 1px dashed var(--interactive-accent);
+}
+
+/* ========================================================
+   NOTESHEET CARDS
+   ======================================================== */
+
+.notesheet-card {
+  position: relative;
+  background-color: var(--background-primary);
+  font-size: var(--notesheet-font-size);
+  line-height: 1.25;
+  border-radius: 4px;
+  box-sizing: border-box;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  transition: box-shadow 0.15s ease;
+}
+
+.notesheet-card.has-border {
+  border: 1px solid var(--notesheet-border-color);
+  padding: 6px 8px;
+}
+
+.notesheet-card.no-border {
+  border: none;
+  padding: 4px 6px;
+  border-left: 2px solid var(--interactive-accent);
+  background: var(--background-secondary-alt);
+}
+
+.notesheet-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.notesheet-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--notesheet-border-color);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  gap: 4px;
+}
+
+.notesheet-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notesheet-card-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+}
+
+.notesheet-card-drag-handle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.notesheet-card-title {
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--text-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notesheet-card-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  color: var(--interactive-accent);
+  background: var(--background-secondary);
+  border: 1px solid var(--notesheet-border-color);
+  padding: 1px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.notesheet-card-source-badge svg {
+  width: 9px;
+  height: 9px;
+}
+
+.notesheet-card-source-badge:hover {
+  background: var(--background-modifier-hover);
+  text-decoration: underline;
+}
+
+.notesheet-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.notesheet-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.notesheet-btn-icon:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.notesheet-btn-icon.btn-danger:hover {
+  color: var(--text-error);
+}
+
+.notesheet-btn-icon svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* Card Body (Markdown Rendered) */
+.notesheet-card-body {
+  font-size: var(--notesheet-font-size);
+}
+
+.notesheet-card-body p {
+  margin: 2px 0 4px 0;
+}
+
+.notesheet-card-body h1,
+.notesheet-card-body h2,
+.notesheet-card-body h3,
+.notesheet-card-body h4 {
+  margin: 4px 0 2px 0;
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+.notesheet-card-body ul,
+.notesheet-card-body ol {
+  margin: 2px 0 4px 16px;
+  padding: 0;
+}
+
+.notesheet-card-body li {
+  margin-bottom: 2px;
+}
+
+.notesheet-card-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 4px 0;
+}
+
+.notesheet-card-body th,
+.notesheet-card-body td {
+  border: 1px solid var(--notesheet-border-color);
+  padding: 2px 4px;
+}
+
+/* KaTeX Math Formatting in Dense Cheat Sheets */
+.notesheet-card-body .math {
+  font-size: 1.05em;
+}
+
+.notesheet-card-body .math-block {
+  margin: 3px 0 !important;
+  padding: 2px 0 !important;
+}
+
+/* Card Edit Mode */
+.notesheet-card-edit-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notesheet-card-title-input {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border: 1px solid var(--notesheet-border-color);
+  border-radius: 3px;
+}
+
+.notesheet-sync-notice {
+  font-size: 10px;
+  color: var(--interactive-accent);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notesheet-sync-notice svg {
+  width: 11px;
+  height: 11px;
+}
+
+.notesheet-card-textarea {
+  width: 100%;
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  line-height: 1.3;
+  padding: 6px;
+  border: 1px solid var(--notesheet-border-color);
+  border-radius: 4px;
+  background: var(--background-modifier-form-field);
+  color: var(--text-normal);
+  resize: vertical;
+}
+
+.notesheet-card-edit-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Empty State */
+.notesheet-empty-state {
+  grid-column: 1 / -1;
+  padding: 40px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--notesheet-border-color);
+  border-radius: 8px;
+  color: var(--text-muted);
+}
+
+.notesheet-empty-state svg {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 8px;
+  color: var(--interactive-accent);
+}
+
+.notesheet-empty-state h3 {
+  margin: 0 0 6px 0;
+  color: var(--text-normal);
+}
+
+.notesheet-empty-state p {
+  font-size: 12px;
+  margin: 0 0 16px 0;
+  max-width: 360px;
+}
+
+/* ========================================================
+   BLOCK PICKER MODAL
+   ======================================================== */
+
+.notesheet-picker-modal {
+  max-width: 680px;
+}
+
+.notesheet-picker-blocks {
+  margin-top: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notesheet-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notesheet-picker-card {
+  border: 1px solid var(--notesheet-border-color);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notesheet-picker-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notesheet-badge {
+  font-size: 10px;
+  font-family: var(--font-monospace);
+  background: var(--background-primary);
+  border: 1px solid var(--notesheet-border-color);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.notesheet-picker-snippet {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--background-primary);
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* ========================================================
+   EXAM PRINTING RULES (@media print)
+   ======================================================== */
+
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 0.25in;
+  }
+
+  /* Hide Obsidian Chrome */
+  .workspace-ribbon,
+  .workspace-tab-header-container,
+  .workspace-split,
+  .titlebar,
+  .status-bar,
+  .notesheet-toolbar,
+  .notesheet-card-actions,
+  .notesheet-card-drag-handle,
+  .notesheet-empty-state,
+  .notesheet-card-source-badge,
+  .drag-target-active {
+    display: none !important;
+  }
+
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .notesheet-view-root {
+    position: static !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  .notesheet-pages-wrapper {
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .notesheet-page-sheet {
+    width: 100% !important;
+    min-height: auto !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* FRONT PAGE FORCED PAGE BREAK */
+  #notesheet-page-front {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  /* BACK PAGE FORCED PAGE BREAK */
+  #notesheet-page-back {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  .notesheet-card {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-color: #bbbbbb !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .notesheet-card-title {
+    color: #000000 !important;
+  }
+
+  .notesheet-card-body {
+    color: #000000 !important;
+  }
+
+  .notesheet-page-header .page-title {
+    color: #000000 !important;
+  }
+
+  .notesheet-page-footer {
+    color: #555555 !important;
+    border-color: #cccccc !important;
+  }
+}
