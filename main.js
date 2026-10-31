@@ -727,7 +727,7 @@ var NotesheetToolbar = class {
 // src/view/NotesheetCard.ts
 var import_obsidian4 = require("obsidian");
 var NotesheetCard = class {
-  constructor(app, component, syncManager, item, settings, categories, currentPageId, callbacks) {
+  constructor(app, component, syncManager, item, settings, categories, currentPageId, callbacks, options) {
     this.isEditing = false;
     this.app = app;
     this.component = component;
@@ -737,6 +737,7 @@ var NotesheetCard = class {
     this.categories = categories;
     this.currentPageId = currentPageId;
     this.callbacks = callbacks;
+    this.options = options || {};
   }
   render(container) {
     const category = this.categories.find((c) => c.id === this.item.categoryId);
@@ -760,7 +761,7 @@ var NotesheetCard = class {
   renderViewMode() {
     this.cardEl.empty();
     const category = this.categories.find((c) => c.id === this.item.categoryId);
-    if (category && this.settings.showCategoryTitles) {
+    if (category && this.settings.showCategoryTitles && !this.options.hideCategoryBanner) {
       const banner = this.cardEl.createDiv({ cls: "notesheet-category-banner" });
       banner.style.backgroundColor = `${category.color}18`;
       banner.style.borderColor = category.color;
@@ -780,7 +781,7 @@ var NotesheetCard = class {
     if (category) {
       const dot = catPill.createSpan({ cls: "category-color-dot" });
       dot.style.backgroundColor = category.color;
-      if (!this.settings.showCategoryTitles) {
+      if (!this.settings.showCategoryTitles || this.options.hideCategoryBanner) {
         catPill.createSpan({ text: category.name });
       }
       catPill.title = `Category: ${category.name} (Click to change)`;
@@ -793,7 +794,7 @@ var NotesheetCard = class {
       this.openCategoryMenu(e);
     });
     const displayTitle = this.cleanFormatting(this.item.title || "");
-    if (this.settings.showCardTitles && displayTitle) {
+    if (this.settings.showCardTitles && displayTitle && !this.options.hideCardTitle) {
       const titleEl = headerLeft.createSpan({ cls: "notesheet-card-title", text: displayTitle });
       titleEl.title = displayTitle;
     }
@@ -1471,74 +1472,107 @@ var NotesheetView = class extends import_obsidian7.ItemView {
       });
       colContainers.push(colEl);
     }
+    const cleanTitle = (t) => {
+      if (!t) return "";
+      return t.replace(/:[a-zA-Z0-9_-]+:\s*/g, "").replace(/^#{1,6}\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/_([^_]+)_/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/[:\s-]+$/, "").trim().toLowerCase();
+    };
+    const itemsByCol = Array.from({ length: numCols }, () => []);
     page.items.forEach((item, index) => {
       const colIndex = item.column !== void 0 && item.column < numCols ? item.column : index % numCols;
-      const cardComp = new NotesheetCard(
-        this.app,
-        this,
-        this.syncManager,
-        item,
-        this.data.settings,
-        this.data.categories,
-        page.id,
-        {
-          onUpdate: async (updatedItem) => {
-            const idx = page.items.findIndex((it) => it.id === updatedItem.id);
-            if (idx !== -1) {
-              page.items[idx] = updatedItem;
-            }
-            await this.saveData();
-          },
-          onDelete: async (deletedItem) => {
-            page.items = page.items.filter((it) => it.id !== deletedItem.id);
-            await this.saveData();
-            await this.render();
-            new import_obsidian7.Notice(`Removed "${deletedItem.title || "Card"}" from notesheet.`);
-          },
-          onMovePage: async (movedItem, targetPageId) => {
-            page.items = page.items.filter((it) => it.id !== movedItem.id);
-            let targetPage = this.data.pages.find((p) => p.id === targetPageId);
-            if (!targetPage) {
-              targetPage = { id: targetPageId, name: targetPageId === "front" ? "Front (Page 1)" : "Back (Page 2)", items: [] };
-              this.data.pages.push(targetPage);
-            }
-            targetPage.items.push(movedItem);
-            await this.saveData();
-            await this.render();
-            new import_obsidian7.Notice(`Moved to ${targetPage.name}`);
-          },
-          onMoveOrder: async (movedItem, direction) => {
-            const idx = page.items.findIndex((it) => it.id === movedItem.id);
-            if (idx === -1) return;
-            const targetIdx = direction === "up" ? idx - 1 : idx + 1;
-            if (targetIdx >= 0 && targetIdx < page.items.length) {
-              const temp = page.items[targetIdx];
-              page.items[targetIdx] = page.items[idx];
-              page.items[idx] = temp;
-              await this.saveData();
-              await this.render();
-            }
-          },
-          onCategoryChange: async (catItem, categoryId) => {
-            catItem.categoryId = categoryId;
-            await this.saveData();
-            await this.render();
-          },
-          onOpenCategoryManager: () => {
-            new CategoryManagerModal(this.app, this.data, async () => {
-              await this.saveData();
-              await this.render();
-            }).open();
+      itemsByCol[colIndex].push(item);
+    });
+    for (let c = 0; c < numCols; c++) {
+      const targetCol = colContainers[c];
+      const colItems = itemsByCol[c];
+      for (let r = 0; r < colItems.length; r++) {
+        const item = colItems[r];
+        let hideCategoryBanner = false;
+        if (item.categoryId) {
+          if (r > 0 && colItems[r - 1].categoryId === item.categoryId) {
+            hideCategoryBanner = true;
+          } else if (c > 0 && r < itemsByCol[c - 1].length && itemsByCol[c - 1][r].categoryId === item.categoryId) {
+            hideCategoryBanner = true;
           }
         }
-      );
-      const targetCol = colContainers[colIndex];
-      const cardEl = cardComp.render(targetCol);
-      cardEl.addEventListener("dragstart", (e) => {
-        e.dataTransfer?.setData("text/plain", item.id);
-      });
-      this.cardComponents.set(item.id, cardComp);
-    });
+        let hideCardTitle = false;
+        const currentTitle = cleanTitle(item.title);
+        if (currentTitle) {
+          if (r > 0 && cleanTitle(colItems[r - 1].title) === currentTitle) {
+            hideCardTitle = true;
+          } else if (c > 0 && r < itemsByCol[c - 1].length && cleanTitle(itemsByCol[c - 1][r].title) === currentTitle) {
+            hideCardTitle = true;
+          }
+        }
+        const cardComp = new NotesheetCard(
+          this.app,
+          this,
+          this.syncManager,
+          item,
+          this.data.settings,
+          this.data.categories,
+          page.id,
+          {
+            onUpdate: async (updatedItem) => {
+              const idx = page.items.findIndex((it) => it.id === updatedItem.id);
+              if (idx !== -1) {
+                page.items[idx] = updatedItem;
+              }
+              await this.saveData();
+            },
+            onDelete: async (deletedItem) => {
+              page.items = page.items.filter((it) => it.id !== deletedItem.id);
+              await this.saveData();
+              await this.render();
+              new import_obsidian7.Notice(`Removed "${deletedItem.title || "Card"}" from notesheet.`);
+            },
+            onMovePage: async (movedItem, targetPageId) => {
+              page.items = page.items.filter((it) => it.id !== movedItem.id);
+              let targetPage = this.data.pages.find((p) => p.id === targetPageId);
+              if (!targetPage) {
+                targetPage = { id: targetPageId, name: targetPageId === "front" ? "Front (Page 1)" : "Back (Page 2)", items: [] };
+                this.data.pages.push(targetPage);
+              }
+              targetPage.items.push(movedItem);
+              await this.saveData();
+              await this.render();
+              new import_obsidian7.Notice(`Moved to ${targetPage.name}`);
+            },
+            onMoveOrder: async (movedItem, direction) => {
+              const idx = page.items.findIndex((it) => it.id === movedItem.id);
+              if (idx === -1) return;
+              const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+              if (targetIdx >= 0 && targetIdx < page.items.length) {
+                const temp = page.items[targetIdx];
+                page.items[targetIdx] = page.items[idx];
+                page.items[idx] = temp;
+                await this.saveData();
+                await this.render();
+              }
+            },
+            onCategoryChange: async (catItem, categoryId) => {
+              catItem.categoryId = categoryId;
+              await this.saveData();
+              await this.render();
+            },
+            onOpenCategoryManager: () => {
+              new CategoryManagerModal(this.app, this.data, async () => {
+                await this.saveData();
+                await this.render();
+              }).open();
+            }
+          },
+          {
+            hideCategoryBanner,
+            hideCardTitle
+          }
+        );
+        const cardEl = cardComp.render(targetCol);
+        cardEl.addEventListener("dragstart", (e) => {
+          e.dataTransfer?.setData("text/plain", item.id);
+        });
+        this.cardComponents.set(item.id, cardComp);
+      }
+    }
     if (this.data.settings.showPageNumbers) {
       const pageFooter = pageSheet.createDiv({ cls: "notesheet-page-footer" });
       pageFooter.createSpan({ text: this.data.title, cls: "footer-title" });

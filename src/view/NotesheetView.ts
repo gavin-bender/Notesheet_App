@@ -248,82 +248,137 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       colContainers.push(colEl);
     }
 
-    // Render cards into appropriate column
+    // Helper to clean title for adjacency comparison
+    const cleanTitle = (t?: string) => {
+      if (!t) return '';
+      return t
+        .replace(/:[a-zA-Z0-9_-]+:\s*/g, '')
+        .replace(/^#{1,6}\s+/, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/__([^_]+)__/g, '$1')
+        .replace(/_([^_]+)_/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/[:\s-]+$/, '')
+        .trim()
+        .toLowerCase();
+    };
+
+    // Group items into their respective columns
+    const itemsByCol: NotesheetItem[][] = Array.from({ length: numCols }, () => []);
     page.items.forEach((item, index) => {
       const colIndex = (item.column !== undefined && item.column < numCols)
         ? item.column
         : (index % numCols);
+      itemsByCol[colIndex].push(item);
+    });
 
-      const cardComp = new NotesheetCard(
-        this.app,
-        this,
-        this.syncManager,
-        item,
-        this.data.settings,
-        this.data.categories,
-        page.id,
-        {
-          onUpdate: async (updatedItem) => {
-            const idx = page.items.findIndex(it => it.id === updatedItem.id);
-            if (idx !== -1) {
-              page.items[idx] = updatedItem;
-            }
-            await this.saveData();
-          },
-          onDelete: async (deletedItem) => {
-            page.items = page.items.filter(it => it.id !== deletedItem.id);
-            await this.saveData();
-            await this.render();
-            new Notice(`Removed "${deletedItem.title || 'Card'}" from notesheet.`);
-          },
-          onMovePage: async (movedItem, targetPageId) => {
-            page.items = page.items.filter(it => it.id !== movedItem.id);
-            let targetPage = this.data.pages.find(p => p.id === targetPageId);
-            if (!targetPage) {
-              targetPage = { id: targetPageId, name: targetPageId === 'front' ? 'Front (Page 1)' : 'Back (Page 2)', items: [] };
-              this.data.pages.push(targetPage);
-            }
-            targetPage.items.push(movedItem);
-            await this.saveData();
-            await this.render();
-            new Notice(`Moved to ${targetPage.name}`);
-          },
-          onMoveOrder: async (movedItem, direction) => {
-            const idx = page.items.findIndex(it => it.id === movedItem.id);
-            if (idx === -1) return;
-            const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-            if (targetIdx >= 0 && targetIdx < page.items.length) {
-              const temp = page.items[targetIdx];
-              page.items[targetIdx] = page.items[idx];
-              page.items[idx] = temp;
-              await this.saveData();
-              await this.render();
-            }
-          },
-          onCategoryChange: async (catItem, categoryId) => {
-            catItem.categoryId = categoryId;
-            await this.saveData();
-            await this.render();
-          },
-          onOpenCategoryManager: () => {
-            new CategoryManagerModal(this.app, this.data, async () => {
-              await this.saveData();
-              await this.render();
-            }).open();
+    // Render cards column by column with LR to TD adjacency deduplication (Highest left title wins)
+    for (let c = 0; c < numCols; c++) {
+      const targetCol = colContainers[c];
+      const colItems = itemsByCol[c];
+
+      for (let r = 0; r < colItems.length; r++) {
+        const item = colItems[r];
+
+        // Adjacency check for Category Title:
+        // Highest left title wins:
+        // 1. Top neighbor (TD): item directly above in same column
+        // 2. Left neighbor (LR): item directly to left in column c - 1
+        let hideCategoryBanner = false;
+        if (item.categoryId) {
+          if (r > 0 && colItems[r - 1].categoryId === item.categoryId) {
+            hideCategoryBanner = true;
+          } else if (c > 0 && r < itemsByCol[c - 1].length && itemsByCol[c - 1][r].categoryId === item.categoryId) {
+            hideCategoryBanner = true;
           }
         }
-      );
 
-      const targetCol = colContainers[colIndex];
-      const cardEl = cardComp.render(targetCol);
+        // Adjacency check for Card Title:
+        let hideCardTitle = false;
+        const currentTitle = cleanTitle(item.title);
+        if (currentTitle) {
+          if (r > 0 && cleanTitle(colItems[r - 1].title) === currentTitle) {
+            hideCardTitle = true;
+          } else if (c > 0 && r < itemsByCol[c - 1].length && cleanTitle(itemsByCol[c - 1][r].title) === currentTitle) {
+            hideCardTitle = true;
+          }
+        }
 
-      // Dragstart event for card
-      cardEl.addEventListener('dragstart', (e) => {
-        e.dataTransfer?.setData('text/plain', item.id);
-      });
+        const cardComp = new NotesheetCard(
+          this.app,
+          this,
+          this.syncManager,
+          item,
+          this.data.settings,
+          this.data.categories,
+          page.id,
+          {
+            onUpdate: async (updatedItem) => {
+              const idx = page.items.findIndex(it => it.id === updatedItem.id);
+              if (idx !== -1) {
+                page.items[idx] = updatedItem;
+              }
+              await this.saveData();
+            },
+            onDelete: async (deletedItem) => {
+              page.items = page.items.filter(it => it.id !== deletedItem.id);
+              await this.saveData();
+              await this.render();
+              new Notice(`Removed "${deletedItem.title || 'Card'}" from notesheet.`);
+            },
+            onMovePage: async (movedItem, targetPageId) => {
+              page.items = page.items.filter(it => it.id !== movedItem.id);
+              let targetPage = this.data.pages.find(p => p.id === targetPageId);
+              if (!targetPage) {
+                targetPage = { id: targetPageId, name: targetPageId === 'front' ? 'Front (Page 1)' : 'Back (Page 2)', items: [] };
+                this.data.pages.push(targetPage);
+              }
+              targetPage.items.push(movedItem);
+              await this.saveData();
+              await this.render();
+              new Notice(`Moved to ${targetPage.name}`);
+            },
+            onMoveOrder: async (movedItem, direction) => {
+              const idx = page.items.findIndex(it => it.id === movedItem.id);
+              if (idx === -1) return;
+              const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+              if (targetIdx >= 0 && targetIdx < page.items.length) {
+                const temp = page.items[targetIdx];
+                page.items[targetIdx] = page.items[idx];
+                page.items[idx] = temp;
+                await this.saveData();
+                await this.render();
+              }
+            },
+            onCategoryChange: async (catItem, categoryId) => {
+              catItem.categoryId = categoryId;
+              await this.saveData();
+              await this.render();
+            },
+            onOpenCategoryManager: () => {
+              new CategoryManagerModal(this.app, this.data, async () => {
+                await this.saveData();
+                await this.render();
+              }).open();
+            }
+          },
+          {
+            hideCategoryBanner,
+            hideCardTitle
+          }
+        );
 
-      this.cardComponents.set(item.id, cardComp);
-    });
+        const cardEl = cardComp.render(targetCol);
+
+        // Dragstart event for card
+        cardEl.addEventListener('dragstart', (e) => {
+          e.dataTransfer?.setData('text/plain', item.id);
+        });
+
+        this.cardComponents.set(item.id, cardComp);
+      }
+    }
 
     // Page Footer (for exam print verification)
     if (this.data.settings.showPageNumbers) {

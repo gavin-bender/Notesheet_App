@@ -11,6 +11,11 @@ export interface CardActionCallbacks {
   onOpenCategoryManager?: () => void;
 }
 
+export interface CardRenderOptions {
+  hideCategoryBanner?: boolean;
+  hideCardTitle?: boolean;
+}
+
 export class NotesheetCard {
   private app: App;
   private component: Component;
@@ -20,6 +25,7 @@ export class NotesheetCard {
   private categories: NotesheetCategory[];
   private currentPageId: string;
   private callbacks: CardActionCallbacks;
+  private options: CardRenderOptions;
   private cardEl: HTMLElement;
   private isEditing = false;
 
@@ -31,7 +37,8 @@ export class NotesheetCard {
     settings: NotesheetSettings,
     categories: NotesheetCategory[],
     currentPageId: string,
-    callbacks: CardActionCallbacks
+    callbacks: CardActionCallbacks,
+    options?: CardRenderOptions
   ) {
     this.app = app;
     this.component = component;
@@ -41,6 +48,7 @@ export class NotesheetCard {
     this.categories = categories;
     this.currentPageId = currentPageId;
     this.callbacks = callbacks;
+    this.options = options || {};
   }
 
   public render(container: HTMLElement): HTMLElement {
@@ -71,8 +79,8 @@ export class NotesheetCard {
     this.cardEl.empty();
     const category = this.categories.find(c => c.id === this.item.categoryId);
 
-    // Optional Category Title Header Banner (if category exists and showCategoryTitles is enabled)
-    if (category && this.settings.showCategoryTitles) {
+    // Optional Category Title Header Banner (if category exists, showCategoryTitles is enabled, and not suppressed by adjacency)
+    if (category && this.settings.showCategoryTitles && !this.options.hideCategoryBanner) {
       const banner = this.cardEl.createDiv({ cls: 'notesheet-category-banner' });
       banner.style.backgroundColor = `${category.color}18`; // 10% opacity tint
       banner.style.borderColor = category.color;
@@ -102,7 +110,7 @@ export class NotesheetCard {
     if (category) {
       const dot = catPill.createSpan({ cls: 'category-color-dot' });
       dot.style.backgroundColor = category.color;
-      if (!this.settings.showCategoryTitles) {
+      if (!this.settings.showCategoryTitles || this.options.hideCategoryBanner) {
         catPill.createSpan({ text: category.name });
       }
       catPill.title = `Category: ${category.name} (Click to change)`;
@@ -118,7 +126,7 @@ export class NotesheetCard {
 
     const displayTitle = this.cleanFormatting(this.item.title || '');
 
-    if (this.settings.showCardTitles && displayTitle) {
+    if (this.settings.showCardTitles && displayTitle && !this.options.hideCardTitle) {
       const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title', text: displayTitle });
       titleEl.title = displayTitle;
     }

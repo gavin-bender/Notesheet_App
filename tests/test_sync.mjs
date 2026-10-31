@@ -136,6 +136,51 @@ const testItem = catDeserialized.pages[0].items.find(i => i.id === 'item-cat-tes
 assert(testItem?.categoryId === formulaCat.id, `Card retained assigned categoryId: ${testItem?.categoryId}`);
 assert(catDeserialized.categories.some(c => c.id === formulaCat.id), 'Categories preserved through serialization');
 
+// Test 7: LR to TD Adjacency Deduplication (Highest Left Title Wins)
+console.log('\nTest Suite 7: Adjacency Deduplication (Highest Left Title Wins)');
+
+function checkAdjacency(itemsByCol, c, r) {
+  const item = itemsByCol[c][r];
+  let hideCategoryBanner = false;
+  if (item.categoryId) {
+    if (r > 0 && itemsByCol[c][r - 1].categoryId === item.categoryId) {
+      hideCategoryBanner = true;
+    } else if (c > 0 && r < itemsByCol[c - 1].length && itemsByCol[c - 1][r].categoryId === item.categoryId) {
+      hideCategoryBanner = true;
+    }
+  }
+  return { hideCategoryBanner };
+}
+
+const gridTest = [
+  // Col 0
+  [
+    { id: 'c0_r0', categoryId: 'cat-theorems', title: 'Nullptrs' },
+    { id: 'c0_r1', categoryId: 'cat-theorems', title: 'Upcasting' },
+    { id: 'c0_r2', categoryId: 'cat-formulas', title: 'Calculus' }
+  ],
+  // Col 1
+  [
+    { id: 'c1_r0', categoryId: 'cat-theorems', title: 'Proof' },
+    { id: 'c1_r1', categoryId: 'cat-formulas', title: 'Kinematics' }
+  ]
+];
+
+// Col 0, Row 0: Top-left, must show title
+assert(checkAdjacency(gridTest, 0, 0).hideCategoryBanner === false, 'Col 0, Row 0 shows category title (Highest Left)');
+
+// Col 0, Row 1: Directly below Col 0, Row 0 with same category -> must hide title
+assert(checkAdjacency(gridTest, 0, 1).hideCategoryBanner === true, 'Col 0, Row 1 hides title (adjacent TD)');
+
+// Col 0, Row 2: Different category (Formulas) -> must show title
+assert(checkAdjacency(gridTest, 0, 2).hideCategoryBanner === false, 'Col 0, Row 2 shows title (new category)');
+
+// Col 1, Row 0: Same category as Col 0, Row 0 (LR adjacent) -> Col 0 wins, Col 1 hides title
+assert(checkAdjacency(gridTest, 1, 0).hideCategoryBanner === true, 'Col 1, Row 0 hides title (adjacent LR to Col 0)');
+
+// Col 1, Row 1: Formulas, left is Theorems, above is Theorems -> must show title
+assert(checkAdjacency(gridTest, 1, 1).hideCategoryBanner === false, 'Col 1, Row 1 shows title (different category from neighbors)');
+
 console.log(`\n========================================`);
 console.log(`TEST SUMMARY: ${passed} passed, ${failed} failed.`);
 console.log(`========================================\n`);

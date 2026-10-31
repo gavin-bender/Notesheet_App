@@ -152,3 +152,4 @@ export class CategoryManagerModal extends Modal {
     this.contentEl.empty();
   }
 }
+
