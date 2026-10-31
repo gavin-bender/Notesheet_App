@@ -1065,25 +1065,41 @@
     margin: 0.25in;
   }
 
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
   /* Obsidian core CSS shows body > .print and hides body > :not(.print) */
   body > .print.notesheet-print-container {
     display: block !important;
     position: static !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
+    box-shadow: none !important;
     overflow: visible !important;
   }
 
-  .notesheet-print-container .notesheet-page-sheet {
+  .notesheet-print-container .notesheet-page-sheet,
+  .notesheet-print-container .notesheet-page-sheet.paper-letter,
+  .notesheet-print-container .notesheet-page-sheet.paper-a4 {
     display: block !important;
     width: 100% !important;
-    max-width: 100% !important;
-    min-height: auto !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
     box-shadow: none !important;
     border-radius: 0 !important;
     background: #ffffff !important;
@@ -1093,29 +1109,10 @@
     box-sizing: border-box !important;
   }
 
-  /* Page breaks between sheets */
+  /* Page breaks between sheets: break after each page except the last */
   .notesheet-print-container .notesheet-page-sheet:not(:last-child) {
     break-after: page !important;
     page-break-after: always !important;
-  }
-
-  .notesheet-print-container .notesheet-page-sheet:not(:first-child) {
-    break-before: page !important;
-    page-break-before: always !important;
-  }
-
-  /* FRONT PAGE FORCED PAGE BREAK (Page 1) */
-  .notesheet-print-container #notesheet-page-front {
-    display: block !important;
-    break-after: page !important;
-    page-break-after: always !important;
-  }
-
-  /* BACK PAGE FORCED PAGE BREAK (Page 2) */
-  .notesheet-print-container #notesheet-page-back {
-    display: block !important;
-    break-before: page !important;
-    page-break-before: always !important;
   }
 
   .notesheet-print-container .notesheet-page-header {
@@ -1123,25 +1120,25 @@
     justify-content: space-between !important;
     align-items: center !important;
     border-bottom: 2px solid #333333 !important;
-    padding-bottom: 4px !important;
-    margin-bottom: 8px !important;
+    padding-bottom: 3px !important;
+    margin-bottom: 6px !important;
   }
 
   .notesheet-print-container .page-title {
     color: #000000 !important;
-    font-size: 13pt !important;
+    font-size: 12pt !important;
     font-weight: 800 !important;
   }
 
   .notesheet-print-container .page-stats {
     color: #555555 !important;
-    font-size: 9pt !important;
+    font-size: 8.5pt !important;
   }
 
   .notesheet-print-container .notesheet-columns-grid {
     display: grid !important;
     width: 100% !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .notesheet-print-container .notesheet-columns-grid.cols-1 { grid-template-columns: 1fr !important; }
@@ -1152,7 +1149,7 @@
   .notesheet-print-container .notesheet-column {
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .notesheet-print-container .notesheet-card {
@@ -1162,7 +1159,7 @@
     page-break-inside: avoid !important;
     border: 1px solid #d0d7de !important;
     border-radius: 4px !important;
-    padding: 6px 8px !important;
+    padding: 4px 6px !important;
     box-shadow: none !important;
   }
 
@@ -1173,13 +1170,13 @@
   .notesheet-print-container .notesheet-category-banner {
     display: flex !important;
     align-items: center !important;
-    gap: 5px !important;
-    padding: 2px 6px !important;
-    margin: -6px -8px 6px -8px !important;
+    gap: 4px !important;
+    padding: 1px 5px !important;
+    margin: -4px -6px 4px -6px !important;
     background: #f3f4f6 !important;
     color: #000000 !important;
     border-bottom: 1px solid #cccccc !important;
-    font-size: 9pt !important;
+    font-size: 8pt !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
     -webkit-print-color-adjust: exact !important;
@@ -1194,30 +1191,50 @@
     display: flex !important;
     align-items: center !important;
     border-bottom: 1px solid #e1e4e8 !important;
-    padding-bottom: 3px !important;
-    margin-bottom: 4px !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 3px !important;
   }
 
   .notesheet-print-container .notesheet-card-title {
     color: #000000 !important;
-    font-size: 10pt !important;
+    font-size: 8.5pt !important;
     font-weight: 700 !important;
   }
 
   .notesheet-print-container .notesheet-card-body {
     color: #000000 !important;
     font-size: var(--notesheet-font-size, 8.5pt) !important;
-    line-height: 1.35 !important;
+    line-height: 1.25 !important;
+  }
+
+  .notesheet-print-container .notesheet-card-body p {
+    margin: 2px 0 !important;
+  }
+
+  .notesheet-print-container .notesheet-card-body ul,
+  .notesheet-print-container .notesheet-card-body ol {
+    margin: 2px 0 !important;
+    padding-inline-start: 16px !important;
+  }
+
+  .notesheet-print-container .notesheet-card-body li {
+    margin: 1px 0 !important;
   }
 
   .notesheet-print-container .notesheet-card-body pre {
     background: #f6f8fa !important;
     border: 1px solid #d0d7de !important;
-    border-radius: 4px !important;
-    padding: 4px 6px !important;
+    border-radius: 3px !important;
+    padding: 3px 5px !important;
+    margin: 3px 0 !important;
     color: #24292f !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  .notesheet-print-container .notesheet-card-body code {
+    font-size: 7.5pt !important;
+    line-height: 1.25 !important;
   }
 
   .notesheet-print-container .notesheet-card-body .token.comment { color: #57606a !important; font-style: italic !important; }
@@ -1227,13 +1244,18 @@
   .notesheet-print-container .notesheet-card-body .token.number,
   .notesheet-print-container .notesheet-card-body .token.boolean { color: #0550ae !important; }
 
+  /* Hide all interactive card UI and buttons in print */
   .notesheet-print-container .notesheet-card-actions,
   .notesheet-print-container .notesheet-card-drag-handle,
   .notesheet-print-container .notesheet-card-source-badge,
   .notesheet-print-container .notesheet-card-category-pill,
   .notesheet-print-container .notesheet-card-edit-wrapper,
   .notesheet-print-container .notesheet-empty-state,
-  .notesheet-print-container .drag-target-active {
+  .notesheet-print-container .drag-target-active,
+  .notesheet-print-container .copy-code-button,
+  .notesheet-print-container button.copy-code-button,
+  .notesheet-print-container .code-block-action,
+  .notesheet-print-container .copy-code-button-text {
     display: none !important;
   }
 
@@ -1242,13 +1264,25 @@
     justify-content: space-between !important;
     color: #555555 !important;
     border-top: 1px solid #cccccc !important;
-    padding-top: 4px !important;
-    margin-top: 8px !important;
-    font-size: 8pt !important;
+    padding-top: 3px !important;
+    margin-top: 6px !important;
+    font-size: 7.5pt !important;
   }
 
-  /* Fallback: if app-container is printed directly */
-  body > .app-container {
-    display: block !important;
+  /* Hide all Obsidian application UI and sidebars */
+  body > :not(.notesheet-print-container) {
+    display: none !important;
+  }
+
+  .app-container,
+  .workspace,
+  .workspace-ribbon,
+  .workspace-split,
+  .workspace-tab-header-container,
+  .titlebar,
+  .status-bar,
+  .modal-container,
+  .notice-container {
+    display: none !important;
   }
 }

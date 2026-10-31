@@ -473,6 +473,12 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     pageEls.forEach((pageEl) => {
       const clone = pageEl.cloneNode(true) as HTMLElement;
       clone.classList.remove('tab-hidden');
+
+      // Strip non-print controls (copy buttons, edit forms, drag handles, buttons)
+      clone.querySelectorAll(
+        '.copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active'
+      ).forEach((el) => el.remove());
+
       printContainer.appendChild(clone);
     });
 

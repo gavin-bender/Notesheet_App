@@ -2064,6 +2064,9 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     pageEls.forEach((pageEl) => {
       const clone = pageEl.cloneNode(true);
       clone.classList.remove("tab-hidden");
+      clone.querySelectorAll(
+        ".copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active"
+      ).forEach((el) => el.remove());
       printContainer.appendChild(clone);
     });
     return printContainer;
