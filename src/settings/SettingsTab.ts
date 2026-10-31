@@ -113,6 +113,18 @@ export class NotesheetSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName('Default Card Background')
+      .setDesc('Enable subtle grey card background on new notesheets')
+      .addToggle(toggle => {
+        toggle
+          .setValue(Boolean(this.plugin.settings.defaultCardBackground))
+          .onChange(async (val) => {
+            this.plugin.settings.defaultCardBackground = val;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
       .setName('Notesheet Folder')
       .setDesc('Folder in vault to store newly created notesheet files (leave empty for vault root)')
       .addText(text => {

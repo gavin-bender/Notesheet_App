@@ -52,6 +52,7 @@ var DEFAULT_NOTESHEET_SETTINGS = {
   density: "compact",
   autoFitPage: true,
   showBorders: true,
+  showCardBackground: false,
   showCardTitles: true,
   showSourceLinks: true,
   showPageNumbers: true,
@@ -65,6 +66,7 @@ var DEFAULT_PLUGIN_SETTINGS = {
   defaultMargins: "compact",
   defaultDensity: "compact",
   defaultAutoFitPage: true,
+  defaultCardBackground: false,
   defaultFolder: "",
   activeNotesheetPath: "",
   confirmCardDelete: false
@@ -138,6 +140,9 @@ ${jsonStr}
             if (parsed.settings.autoFitPage === void 0) {
               parsed.settings.autoFitPage = true;
             }
+            if (parsed.settings.showCardBackground === void 0) {
+              parsed.settings.showCardBackground = false;
+            }
           }
           const cleanTitleStr = (t) => {
             if (!t) return "";
@@ -179,6 +184,9 @@ ${jsonStr}
           }
           if (parsed.settings.autoFitPage === void 0) {
             parsed.settings.autoFitPage = true;
+          }
+          if (parsed.settings.showCardBackground === void 0) {
+            parsed.settings.showCardBackground = false;
           }
         }
         return parsed;
@@ -739,6 +747,8 @@ var NotesheetToolbar = class {
     const borderCheck = borderGroup.createEl("input", { type: "checkbox", cls: "notesheet-checkbox" });
     borderCheck.checked = this.data.settings.showBorders;
     const borderLabel = borderGroup.createSpan({ text: "Borders", cls: "checkbox-label" });
+    borderCheck.title = "Toggle card border boxes on or off in app and print";
+    borderLabel.title = borderCheck.title;
     borderCheck.addEventListener("change", async () => {
       this.data.settings.showBorders = borderCheck.checked;
       await this.callbacks.onSettingChange();
@@ -746,6 +756,20 @@ var NotesheetToolbar = class {
     borderLabel.addEventListener("click", () => {
       borderCheck.checked = !borderCheck.checked;
       borderCheck.dispatchEvent(new Event("change"));
+    });
+    const bgGroup = row2.createDiv({ cls: "toolbar-group" });
+    const bgCheck = bgGroup.createEl("input", { type: "checkbox", cls: "notesheet-checkbox" });
+    bgCheck.checked = Boolean(this.data.settings.showCardBackground);
+    const bgLabel = bgGroup.createSpan({ text: "Background", cls: "checkbox-label" });
+    bgCheck.title = "Toggle subtle grey card background on or off in app and print";
+    bgLabel.title = bgCheck.title;
+    bgCheck.addEventListener("change", async () => {
+      this.data.settings.showCardBackground = bgCheck.checked;
+      await this.callbacks.onSettingChange();
+    });
+    bgLabel.addEventListener("click", () => {
+      bgCheck.checked = !bgCheck.checked;
+      bgCheck.dispatchEvent(new Event("change"));
     });
     const catTitlesGroup = row2.createDiv({ cls: "toolbar-group" });
     const catCheck = catTitlesGroup.createEl("input", { type: "checkbox", cls: "notesheet-checkbox" });
@@ -1119,8 +1143,10 @@ var NotesheetCard = class {
   }
   render(container) {
     const category = this.categories.find((c) => c.id === this.item.categoryId);
+    const hasBorder = this.settings.showBorders;
+    const hasBg = Boolean(this.settings.showCardBackground);
     this.cardEl = container.createDiv({
-      cls: `notesheet-card ${this.settings.showBorders ? "has-border" : "no-border"} ${category ? "has-category" : ""} ${this.isEditing ? "is-editing" : ""}`
+      cls: `notesheet-card ${hasBorder ? "has-border" : "no-border"} ${hasBg ? "has-background" : "no-background"} ${category ? "has-category" : ""} ${this.isEditing ? "is-editing" : ""}`
     });
     this.cardEl.dataset.itemId = this.item.id;
     this.cardEl.setAttribute("draggable", this.isEditing ? "false" : "true");
@@ -2383,6 +2409,12 @@ var NotesheetSettingTab = class extends import_obsidian11.PluginSettingTab {
     new import_obsidian11.Setting(containerEl).setName("Default Auto-Fit to Page").setDesc("Automatically scale cards proportionally so each sheet fits on exactly 1 printed page without spilling").addToggle((toggle) => {
       toggle.setValue(this.plugin.settings.defaultAutoFitPage !== false).onChange(async (val) => {
         this.plugin.settings.defaultAutoFitPage = val;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian11.Setting(containerEl).setName("Default Card Background").setDesc("Enable subtle grey card background on new notesheets").addToggle((toggle) => {
+      toggle.setValue(Boolean(this.plugin.settings.defaultCardBackground)).onChange(async (val) => {
+        this.plugin.settings.defaultCardBackground = val;
         await this.plugin.saveSettings();
       });
     });

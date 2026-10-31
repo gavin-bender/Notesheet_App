@@ -52,6 +52,9 @@ ${jsonStr}
             if (parsed.settings.autoFitPage === undefined) {
               parsed.settings.autoFitPage = true;
             }
+            if (parsed.settings.showCardBackground === undefined) {
+              parsed.settings.showCardBackground = false;
+            }
           }
 
           // Clean up titles of any legacy formatting or icon shortcodes
@@ -109,6 +112,9 @@ ${jsonStr}
           }
           if (parsed.settings.autoFitPage === undefined) {
             parsed.settings.autoFitPage = true;
+          }
+          if (parsed.settings.showCardBackground === undefined) {
+            parsed.settings.showCardBackground = false;
           }
         }
         return parsed;

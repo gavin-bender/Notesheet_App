@@ -33,6 +33,7 @@ export interface NotesheetSettings {
   density?: 'compact' | 'normal';          // Content density: compact (exam cheat sheet) vs normal
   autoFitPage?: boolean;                   // Automatically scale content to fit cleanly on 1 page per sheet
   showBorders: boolean;    // show card border boxes
+  showCardBackground?: boolean; // show subtle grey background on cards
   showCardTitles: boolean; // show title header on cards
   showSourceLinks: boolean;// show link back to source note
   showPageNumbers: boolean;// show Page 1: Front / Page 2: Back in print footer
@@ -56,6 +57,7 @@ export interface PluginSettings {
   defaultMargins: 'tight' | 'compact' | 'normal';
   defaultDensity: 'compact' | 'normal';
   defaultAutoFitPage: boolean;
+  defaultCardBackground: boolean;
   defaultFolder: string;
   activeNotesheetPath: string;
   confirmCardDelete: boolean;
@@ -79,6 +81,7 @@ export const DEFAULT_NOTESHEET_SETTINGS: NotesheetSettings = {
   density: 'compact',
   autoFitPage: true,
   showBorders: true,
+  showCardBackground: false,
   showCardTitles: true,
   showSourceLinks: true,
   showPageNumbers: true,
@@ -93,6 +96,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   defaultMargins: 'compact',
   defaultDensity: 'compact',
   defaultAutoFitPage: true,
+  defaultCardBackground: false,
   defaultFolder: '',
   activeNotesheetPath: '',
   confirmCardDelete: false,

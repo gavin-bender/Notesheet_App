@@ -7,7 +7,15 @@
   --notesheet-columns: 2;
   --notesheet-card-bg: var(--background-primary);
   --notesheet-sheet-bg: var(--background-primary-alt);
-  --notesheet-border-color: var(--background-modifier-border);
+  --notesheet-border-color: #d0d7de;
+  --notesheet-card-border: #d0d7de;
+  --notesheet-header-divider: #e1e4e8;
+}
+
+.theme-dark {
+  --notesheet-border-color: var(--background-modifier-border-hover, #444c56);
+  --notesheet-card-border: var(--background-modifier-border-hover, #444c56);
+  --notesheet-header-divider: var(--background-modifier-border, #373e47);
 }
 
 .notesheet-view-root {
@@ -403,22 +411,39 @@
   overflow-wrap: break-word;
 }
 
+/* Card Border Variations */
 .notesheet-card.has-border {
-  border: 1px solid var(--notesheet-border-color);
+  border: 1px solid var(--notesheet-card-border, #d0d7de) !important;
   padding: 4px 6px;
+}
+
+.notesheet-card.has-border.has-category {
+  border: 1px solid var(--notesheet-card-border, #d0d7de) !important;
+  border-left: 3.5px solid var(--card-cat-color) !important;
 }
 
 .notesheet-card.no-border {
-  border: none;
+  border: none !important;
   padding: 4px 6px;
-  border-left: 2px solid var(--interactive-accent);
-  background: var(--background-secondary-alt);
 }
 
-/* When category is assigned: category color is on the side (replaces the default purple accent) */
+.notesheet-card.no-border.has-category {
+  border: none !important;
+  border-left: 3.5px solid var(--card-cat-color) !important;
+}
+
+/* When category is assigned: category color is on the side */
 .notesheet-card.has-category {
   border-left: 3.5px solid var(--card-cat-color) !important;
-  border-top: none;
+}
+
+/* Card Background Variations (Independent of Borders) */
+.notesheet-card.no-background {
+  background-color: var(--background-primary) !important;
+}
+
+.notesheet-card.has-background {
+  background-color: var(--background-secondary-alt, #f6f8fa) !important;
 }
 
 .notesheet-card:hover {
@@ -448,6 +473,7 @@
 }
 
 .density-compact .notesheet-card-header {
+  border-bottom: 1px solid var(--notesheet-header-divider, #e1e4e8) !important;
   padding-bottom: 1px;
   margin-bottom: 2px;
 }
@@ -537,6 +563,7 @@
 }
 
 .density-normal .notesheet-card-header {
+  border-bottom: 1px solid var(--notesheet-header-divider, #e1e4e8) !important;
   padding-bottom: 2px;
   margin-bottom: 4px;
 }
@@ -619,7 +646,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--notesheet-border-color);
+  border-bottom: 1px solid var(--notesheet-header-divider, #e1e4e8) !important;
   padding-bottom: 2px;
   margin-bottom: 3px;
   gap: 4px;
@@ -1469,7 +1496,6 @@
   }
 
   .notesheet-print-container .notesheet-card {
-    background: #ffffff !important;
     color: #000000 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
@@ -1482,14 +1508,34 @@
     padding: 4px 6px !important;
   }
 
+  .notesheet-print-container .notesheet-card.has-border.has-category {
+    border: 1px solid #d0d7de !important;
+    border-left: 3.5pt solid var(--card-cat-color) !important;
+  }
+
   .notesheet-print-container .notesheet-card.no-border {
     border: none !important;
-    border-left: 2px solid #555555 !important;
     padding: 4px 6px !important;
+  }
+
+  .notesheet-print-container .notesheet-card.no-border.has-category {
+    border: none !important;
+    border-left: 3.5pt solid var(--card-cat-color) !important;
   }
 
   .notesheet-print-container .notesheet-card.has-category {
     border-left: 3.5pt solid var(--card-cat-color) !important;
+  }
+
+  /* Card Background Variations in Print */
+  .notesheet-print-container .notesheet-card.no-background {
+    background: #ffffff !important;
+  }
+
+  .notesheet-print-container .notesheet-card.has-background {
+    background: #f6f8fa !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Compact Density in Print */
@@ -1504,6 +1550,7 @@
   }
 
   .notesheet-print-container.density-compact .notesheet-card-header {
+    border-bottom: 1px solid #e1e4e8 !important;
     padding-bottom: 1px !important;
     margin-bottom: 2px !important;
   }
@@ -1571,6 +1618,12 @@
   .notesheet-print-container.density-normal .notesheet-card.has-border,
   .notesheet-print-container.density-normal .notesheet-card.no-border {
     padding: 4px 6px !important;
+  }
+
+  .notesheet-print-container.density-normal .notesheet-card-header {
+    border-bottom: 1px solid #e1e4e8 !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 4px !important;
   }
 
   .notesheet-print-container.density-normal .notesheet-card-body p {

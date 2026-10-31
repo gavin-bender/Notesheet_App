@@ -84,8 +84,10 @@ export class NotesheetCard {
   public render(container: HTMLElement): HTMLElement {
     const category = this.categories.find(c => c.id === this.item.categoryId);
 
+    const hasBorder = this.settings.showBorders;
+    const hasBg = Boolean(this.settings.showCardBackground);
     this.cardEl = container.createDiv({
-      cls: `notesheet-card ${this.settings.showBorders ? 'has-border' : 'no-border'} ${category ? 'has-category' : ''} ${this.isEditing ? 'is-editing' : ''}`
+      cls: `notesheet-card ${hasBorder ? 'has-border' : 'no-border'} ${hasBg ? 'has-background' : 'no-background'} ${category ? 'has-category' : ''} ${this.isEditing ? 'is-editing' : ''}`
     });
     this.cardEl.dataset.itemId = this.item.id;
     this.cardEl.setAttribute('draggable', this.isEditing ? 'false' : 'true');

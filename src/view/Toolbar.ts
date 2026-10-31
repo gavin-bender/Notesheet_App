@@ -227,6 +227,8 @@ export class NotesheetToolbar {
     const borderCheck = borderGroup.createEl('input', { type: 'checkbox', cls: 'notesheet-checkbox' });
     borderCheck.checked = this.data.settings.showBorders;
     const borderLabel = borderGroup.createSpan({ text: 'Borders', cls: 'checkbox-label' });
+    borderCheck.title = 'Toggle card border boxes on or off in app and print';
+    borderLabel.title = borderCheck.title;
     borderCheck.addEventListener('change', async () => {
       this.data.settings.showBorders = borderCheck.checked;
       await this.callbacks.onSettingChange();
@@ -234,6 +236,22 @@ export class NotesheetToolbar {
     borderLabel.addEventListener('click', () => {
       borderCheck.checked = !borderCheck.checked;
       borderCheck.dispatchEvent(new Event('change'));
+    });
+
+    // Toggle Card Background (Grey on/off)
+    const bgGroup = row2.createDiv({ cls: 'toolbar-group' });
+    const bgCheck = bgGroup.createEl('input', { type: 'checkbox', cls: 'notesheet-checkbox' });
+    bgCheck.checked = Boolean(this.data.settings.showCardBackground);
+    const bgLabel = bgGroup.createSpan({ text: 'Background', cls: 'checkbox-label' });
+    bgCheck.title = 'Toggle subtle grey card background on or off in app and print';
+    bgLabel.title = bgCheck.title;
+    bgCheck.addEventListener('change', async () => {
+      this.data.settings.showCardBackground = bgCheck.checked;
+      await this.callbacks.onSettingChange();
+    });
+    bgLabel.addEventListener('click', () => {
+      bgCheck.checked = !bgCheck.checked;
+      bgCheck.dispatchEvent(new Event('change'));
     });
 
     // Toggle Category Titles (Show/Hide)
