@@ -116,9 +116,11 @@ export class NotesheetCard {
       this.openCategoryMenu(e);
     });
 
-    if (this.settings.showCardTitles && this.item.title) {
-      const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title', text: this.item.title });
-      titleEl.title = this.item.title;
+    const displayTitle = this.cleanFormatting(this.item.title || '');
+
+    if (this.settings.showCardTitles && displayTitle) {
+      const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title', text: displayTitle });
+      titleEl.title = displayTitle;
     }
 
     if (this.item.sourceFile && this.settings.showSourceLinks) {
@@ -187,15 +189,69 @@ export class NotesheetCard {
       this.callbacks.onDelete(this.item);
     });
 
-    // Card Body: Render Markdown
+    // Card Body: Render Markdown (with duplicate title stripped if header already shows it)
     const bodyEl = this.cardEl.createDiv({ cls: 'notesheet-card-body' });
+    const contentToRender = this.getDisplayContent(
+      this.item.content,
+      displayTitle,
+      this.settings.showCardTitles
+    );
+
     MarkdownRenderer.render(
       this.app,
-      this.item.content,
+      contentToRender,
       bodyEl,
       this.item.sourceFile || '',
       this.component
     );
+  }
+
+  /**
+   * Cleans icon shortcodes, markdown markers, and trailing punctuation from titles.
+   */
+  private cleanFormatting(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/:[a-zA-Z0-9_-]+:\s*/g, '')
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/[:\s-]+$/, '')
+      .trim();
+  }
+
+  /**
+   * Strips duplicate leading title lines from the card body when the header displays it.
+   */
+  private getDisplayContent(content: string, title?: string, showTitleHeader = true): string {
+    if (!content) return '';
+    if (!showTitleHeader || !title) return content;
+
+    const lines = content.trimStart().split('\n');
+    if (lines.length <= 1) {
+      return content;
+    }
+
+    const cleanFirstLine = this.cleanFormatting(lines[0]).toLowerCase();
+    const cleanTitle = this.cleanFormatting(title).toLowerCase();
+
+    if (cleanFirstLine && cleanTitle) {
+      if (
+        cleanFirstLine === cleanTitle ||
+        cleanFirstLine.startsWith(cleanTitle) ||
+        cleanTitle.startsWith(cleanFirstLine)
+      ) {
+        const rest = lines.slice(1).join('\n').trim();
+        if (rest.length > 0) {
+          return rest;
+        }
+      }
+    }
+
+    return content;
   }
 
   private openCategoryMenu(event: MouseEvent): void {

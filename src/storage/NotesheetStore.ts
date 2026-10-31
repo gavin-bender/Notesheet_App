@@ -48,6 +48,29 @@ ${jsonStr}
             }
           }
 
+          // Clean up titles of any legacy formatting or icon shortcodes
+          const cleanTitleStr = (t?: string) => {
+            if (!t) return '';
+            return t
+              .replace(/:[a-zA-Z0-9_-]+:\s*/g, '')
+              .replace(/^#{1,6}\s+/, '')
+              .replace(/\*\*([^*]+)\*\*/g, '$1')
+              .replace(/\*([^*]+)\*/g, '$1')
+              .replace(/__([^_]+)__/g, '$1')
+              .replace(/_([^_]+)_/g, '$1')
+              .replace(/`([^`]+)`/g, '$1')
+              .replace(/[:\s-]+$/, '')
+              .trim();
+          };
+
+          for (const p of parsed.pages) {
+            for (const item of p.items) {
+              if (item.title) {
+                item.title = cleanTitleStr(item.title);
+              }
+            }
+          }
+
           // Normalize and ensure 2 pages minimum (Front and Back)
           if (!parsed.pages.some(p => p.id === 'front')) {
             parsed.pages.unshift({ id: 'front', name: 'Front (Page 1)', items: [] });

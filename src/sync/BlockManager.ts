@@ -26,37 +26,57 @@ export class BlockManager {
   }
 
   /**
+   * Cleans markdown formatting, shortcodes, and trailing symbols from text.
+   */
+  public cleanFormatting(text: string): string {
+    return text
+      .replace(/:[a-zA-Z0-9_-]+:\s*/g, '')
+      .replace(/^#{1,6}\s+/, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/[:\s-]+$/, '')
+      .trim();
+  }
+
+  /**
    * Infers a good title from markdown content (first heading, bold prefix, or first line).
    */
   public inferTitle(markdown: string, fallback = 'Note Block'): string {
     const trimmed = markdown.trim();
     if (!trimmed) return fallback;
 
+    const withoutIcon = trimmed.replace(/^:[a-zA-Z0-9_-]+:\s*/, '');
+
     // Check for markdown heading: # Heading or ## Heading
-    const headingMatch = trimmed.match(/^#{1,6}\s+([^\n]+)/m);
+    const headingMatch = withoutIcon.match(/^#{1,6}\s+([^\n]+)/m);
     if (headingMatch) {
-      return headingMatch[1].trim();
+      const title = this.cleanFormatting(headingMatch[1]);
+      if (title) return title;
     }
 
     // Check for bold lead-in: **Title:** or **Title**:
-    const boldMatch = trimmed.match(/^\*\*([^*]+)\*\*/);
+    const boldMatch = withoutIcon.match(/^\*\*([^*]+)\*\*/);
     if (boldMatch) {
-      const title = boldMatch[1].replace(/[:\s-]+$/, '').trim();
+      const title = this.cleanFormatting(boldMatch[1]);
       if (title) return title;
     }
 
     // Check for callout: > [!info] Title
-    const calloutMatch = trimmed.match(/^>\s*\[![^\]]+\]\s*([^\n]*)/m);
+    const calloutMatch = withoutIcon.match(/^>\s*\[![^\]]+\]\s*([^\n]*)/m);
     if (calloutMatch && calloutMatch[1].trim()) {
-      return calloutMatch[1].trim();
+      const title = this.cleanFormatting(calloutMatch[1]);
+      if (title) return title;
     }
 
-    // First non-empty line (truncated to 40 chars)
-    const lines = trimmed.split('\n');
+    // First non-empty line
+    const lines = withoutIcon.split('\n');
     for (const line of lines) {
-      const clean = line.replace(/^[#\-*>\s0-9.]+\s*/, '').trim();
+      const clean = this.cleanFormatting(line.replace(/^[#\-*>\s0-9.]+\s*/, ''));
       if (clean) {
-        return clean.length > 40 ? clean.substring(0, 37) + '...' : clean;
+        return clean.length > 50 ? clean.substring(0, 47) + '...' : clean;
       }
     }
 

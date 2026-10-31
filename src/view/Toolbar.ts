@@ -218,6 +218,20 @@ export class NotesheetToolbar {
       catCheck.dispatchEvent(new Event('change'));
     });
 
+    // Toggle Card Titles (Show/Hide)
+    const cardTitlesGroup = row2.createDiv({ cls: 'toolbar-group' });
+    const cardTitlesCheck = cardTitlesGroup.createEl('input', { type: 'checkbox', cls: 'notesheet-checkbox' });
+    cardTitlesCheck.checked = this.data.settings.showCardTitles;
+    const cardTitlesLabel = cardTitlesGroup.createSpan({ text: 'Card Titles', cls: 'checkbox-label' });
+    cardTitlesCheck.addEventListener('change', async () => {
+      this.data.settings.showCardTitles = cardTitlesCheck.checked;
+      await this.callbacks.onSettingChange();
+    });
+    cardTitlesLabel.addEventListener('click', () => {
+      cardTitlesCheck.checked = !cardTitlesCheck.checked;
+      cardTitlesCheck.dispatchEvent(new Event('change'));
+    });
+
     return this.containerEl;
   }
 }

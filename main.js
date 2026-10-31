@@ -129,6 +129,17 @@ ${jsonStr}
               parsed.settings.showCategoryTitles = true;
             }
           }
+          const cleanTitleStr = (t) => {
+            if (!t) return "";
+            return t.replace(/:[a-zA-Z0-9_-]+:\s*/g, "").replace(/^#{1,6}\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/_([^_]+)_/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/[:\s-]+$/, "").trim();
+          };
+          for (const p of parsed.pages) {
+            for (const item of p.items) {
+              if (item.title) {
+                item.title = cleanTitleStr(item.title);
+              }
+            }
+          }
           if (!parsed.pages.some((p) => p.id === "front")) {
             parsed.pages.unshift({ id: "front", name: "Front (Page 1)", items: [] });
           }
@@ -236,29 +247,38 @@ var BlockManager = class {
     return id;
   }
   /**
+   * Cleans markdown formatting, shortcodes, and trailing symbols from text.
+   */
+  cleanFormatting(text) {
+    return text.replace(/:[a-zA-Z0-9_-]+:\s*/g, "").replace(/^#{1,6}\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/_([^_]+)_/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/[:\s-]+$/, "").trim();
+  }
+  /**
    * Infers a good title from markdown content (first heading, bold prefix, or first line).
    */
   inferTitle(markdown, fallback = "Note Block") {
     const trimmed = markdown.trim();
     if (!trimmed) return fallback;
-    const headingMatch = trimmed.match(/^#{1,6}\s+([^\n]+)/m);
+    const withoutIcon = trimmed.replace(/^:[a-zA-Z0-9_-]+:\s*/, "");
+    const headingMatch = withoutIcon.match(/^#{1,6}\s+([^\n]+)/m);
     if (headingMatch) {
-      return headingMatch[1].trim();
-    }
-    const boldMatch = trimmed.match(/^\*\*([^*]+)\*\*/);
-    if (boldMatch) {
-      const title = boldMatch[1].replace(/[:\s-]+$/, "").trim();
+      const title = this.cleanFormatting(headingMatch[1]);
       if (title) return title;
     }
-    const calloutMatch = trimmed.match(/^>\s*\[![^\]]+\]\s*([^\n]*)/m);
-    if (calloutMatch && calloutMatch[1].trim()) {
-      return calloutMatch[1].trim();
+    const boldMatch = withoutIcon.match(/^\*\*([^*]+)\*\*/);
+    if (boldMatch) {
+      const title = this.cleanFormatting(boldMatch[1]);
+      if (title) return title;
     }
-    const lines = trimmed.split("\n");
+    const calloutMatch = withoutIcon.match(/^>\s*\[![^\]]+\]\s*([^\n]*)/m);
+    if (calloutMatch && calloutMatch[1].trim()) {
+      const title = this.cleanFormatting(calloutMatch[1]);
+      if (title) return title;
+    }
+    const lines = withoutIcon.split("\n");
     for (const line of lines) {
-      const clean = line.replace(/^[#\-*>\s0-9.]+\s*/, "").trim();
+      const clean = this.cleanFormatting(line.replace(/^[#\-*>\s0-9.]+\s*/, ""));
       if (clean) {
-        return clean.length > 40 ? clean.substring(0, 37) + "..." : clean;
+        return clean.length > 50 ? clean.substring(0, 47) + "..." : clean;
       }
     }
     return fallback;
@@ -688,6 +708,18 @@ var NotesheetToolbar = class {
       catCheck.checked = !catCheck.checked;
       catCheck.dispatchEvent(new Event("change"));
     });
+    const cardTitlesGroup = row2.createDiv({ cls: "toolbar-group" });
+    const cardTitlesCheck = cardTitlesGroup.createEl("input", { type: "checkbox", cls: "notesheet-checkbox" });
+    cardTitlesCheck.checked = this.data.settings.showCardTitles;
+    const cardTitlesLabel = cardTitlesGroup.createSpan({ text: "Card Titles", cls: "checkbox-label" });
+    cardTitlesCheck.addEventListener("change", async () => {
+      this.data.settings.showCardTitles = cardTitlesCheck.checked;
+      await this.callbacks.onSettingChange();
+    });
+    cardTitlesLabel.addEventListener("click", () => {
+      cardTitlesCheck.checked = !cardTitlesCheck.checked;
+      cardTitlesCheck.dispatchEvent(new Event("change"));
+    });
     return this.containerEl;
   }
 };
@@ -760,9 +792,10 @@ var NotesheetCard = class {
       e.stopPropagation();
       this.openCategoryMenu(e);
     });
-    if (this.settings.showCardTitles && this.item.title) {
-      const titleEl = headerLeft.createSpan({ cls: "notesheet-card-title", text: this.item.title });
-      titleEl.title = this.item.title;
+    const displayTitle = this.cleanFormatting(this.item.title || "");
+    if (this.settings.showCardTitles && displayTitle) {
+      const titleEl = headerLeft.createSpan({ cls: "notesheet-card-title", text: displayTitle });
+      titleEl.title = displayTitle;
     }
     if (this.item.sourceFile && this.settings.showSourceLinks) {
       const sourceBadge = headerLeft.createSpan({ cls: "notesheet-card-source-badge" });
@@ -817,13 +850,47 @@ var NotesheetCard = class {
       this.callbacks.onDelete(this.item);
     });
     const bodyEl = this.cardEl.createDiv({ cls: "notesheet-card-body" });
+    const contentToRender = this.getDisplayContent(
+      this.item.content,
+      displayTitle,
+      this.settings.showCardTitles
+    );
     import_obsidian4.MarkdownRenderer.render(
       this.app,
-      this.item.content,
+      contentToRender,
       bodyEl,
       this.item.sourceFile || "",
       this.component
     );
+  }
+  /**
+   * Cleans icon shortcodes, markdown markers, and trailing punctuation from titles.
+   */
+  cleanFormatting(text) {
+    if (!text) return "";
+    return text.replace(/:[a-zA-Z0-9_-]+:\s*/g, "").replace(/^#{1,6}\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/_([^_]+)_/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/[:\s-]+$/, "").trim();
+  }
+  /**
+   * Strips duplicate leading title lines from the card body when the header displays it.
+   */
+  getDisplayContent(content, title, showTitleHeader = true) {
+    if (!content) return "";
+    if (!showTitleHeader || !title) return content;
+    const lines = content.trimStart().split("\n");
+    if (lines.length <= 1) {
+      return content;
+    }
+    const cleanFirstLine = this.cleanFormatting(lines[0]).toLowerCase();
+    const cleanTitle = this.cleanFormatting(title).toLowerCase();
+    if (cleanFirstLine && cleanTitle) {
+      if (cleanFirstLine === cleanTitle || cleanFirstLine.startsWith(cleanTitle) || cleanTitle.startsWith(cleanFirstLine)) {
+        const rest = lines.slice(1).join("\n").trim();
+        if (rest.length > 0) {
+          return rest;
+        }
+      }
+    }
+    return content;
   }
   openCategoryMenu(event) {
     const menu = new import_obsidian4.Menu();

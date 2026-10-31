@@ -46,6 +46,8 @@ console.log('\nTest Suite 2: Title Inference');
 assert(bm.inferTitle('# Euler Equation\n$e^{i\\pi}+1=0$') === 'Euler Equation', 'Infer from heading');
 assert(bm.inferTitle('**Ohm\'s Law:** $V = IR$') === 'Ohm\'s Law', 'Infer from bold prefix');
 assert(bm.inferTitle('> [!tip] Integration by Parts\n> $\\int u dv = uv - \\int v du$') === 'Integration by Parts', 'Infer from callout');
+assert(bm.inferTitle(':luc_layers: **Upcasting and Slicing** \n- some list') === 'Upcasting and Slicing', 'Strip icon shortcode and bold');
+assert(bm.inferTitle(':luc_mouse_pointer: **LValues and RValues**\n- text') === 'LValues and RValues', 'Strip mouse pointer shortcode and bold');
 
 // Test 3: Block content extraction
 console.log('\nTest Suite 3: Block Content Finding');
