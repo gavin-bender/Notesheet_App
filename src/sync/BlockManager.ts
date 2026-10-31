@@ -26,11 +26,10 @@ export class BlockManager {
   }
 
   /**
-   * Cleans markdown formatting, shortcodes, and trailing symbols from text.
+   * Cleans markdown formatting and trailing symbols from text, optionally preserving icon shortcodes.
    */
-  public cleanFormatting(text: string): string {
-    return text
-      .replace(/:[a-zA-Z0-9_-]+:\s*/g, '')
+  public cleanFormatting(text: string, preserveShortcodes = true): string {
+    let res = text
       .replace(/^#{1,6}\s+/, '')
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
@@ -39,36 +38,45 @@ export class BlockManager {
       .replace(/`([^`]+)`/g, '$1')
       .replace(/[:\s-]+$/, '')
       .trim();
+
+    if (!preserveShortcodes) {
+      res = res.replace(/:[a-zA-Z0-9_-]+:\s*/g, '').trim();
+    }
+
+    return res;
   }
 
   /**
-   * Infers a good title from markdown content (first heading, bold prefix, or first line).
+   * Infers a good title from markdown content (first heading, bold prefix, or first line),
+   * preserving icon shortcodes (e.g. ":luc_layers:") so they can render.
    */
   public inferTitle(markdown: string, fallback = 'Note Block'): string {
     const trimmed = markdown.trim();
     if (!trimmed) return fallback;
 
-    const withoutIcon = trimmed.replace(/^:[a-zA-Z0-9_-]+:\s*/, '');
+    const iconMatch = trimmed.match(/^(:[a-zA-Z0-9_-]+:)\s*/);
+    const leadingIcon = iconMatch ? iconMatch[1] + ' ' : '';
+    const withoutIcon = iconMatch ? trimmed.substring(iconMatch[0].length) : trimmed;
 
     // Check for markdown heading: # Heading or ## Heading
     const headingMatch = withoutIcon.match(/^#{1,6}\s+([^\n]+)/m);
     if (headingMatch) {
       const title = this.cleanFormatting(headingMatch[1]);
-      if (title) return title;
+      if (title) return `${leadingIcon}${title}`.trim();
     }
 
     // Check for bold lead-in: **Title:** or **Title**:
     const boldMatch = withoutIcon.match(/^\*\*([^*]+)\*\*/);
     if (boldMatch) {
       const title = this.cleanFormatting(boldMatch[1]);
-      if (title) return title;
+      if (title) return `${leadingIcon}${title}`.trim();
     }
 
     // Check for callout: > [!info] Title
     const calloutMatch = withoutIcon.match(/^>\s*\[![^\]]+\]\s*([^\n]*)/m);
     if (calloutMatch && calloutMatch[1].trim()) {
       const title = this.cleanFormatting(calloutMatch[1]);
-      if (title) return title;
+      if (title) return `${leadingIcon}${title}`.trim();
     }
 
     // First non-empty line
@@ -76,7 +84,8 @@ export class BlockManager {
     for (const line of lines) {
       const clean = this.cleanFormatting(line.replace(/^[#\-*>\s0-9.]+\s*/, ''));
       if (clean) {
-        return clean.length > 50 ? clean.substring(0, 47) + '...' : clean;
+        const full = `${leadingIcon}${clean}`.trim();
+        return full.length > 50 ? full.substring(0, 47) + '...' : full;
       }
     }
 

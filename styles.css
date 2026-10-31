@@ -478,6 +478,34 @@
   white-space: nowrap;
   min-width: 0;
   flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Shortcode Icons in Titles */
+.notesheet-shortcode-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
+.notesheet-shortcode-icon svg,
+.notesheet-icon-svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2px;
+  stroke: currentColor;
+  fill: none;
+  vertical-align: middle;
+}
+
+.notesheet-emoji-icon {
+  font-size: 1.1em;
+  line-height: 1;
+}
 }
 
 .notesheet-card-source-badge {

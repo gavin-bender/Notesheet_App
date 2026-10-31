@@ -18,3 +18,9 @@ export function debounce(fn) {
   return fn;
 }
 export function setIcon() {}
+export function getIcon(name) {
+  return {
+    addClass() {},
+    tagName: 'svg'
+  };
+}

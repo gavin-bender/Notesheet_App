@@ -1,6 +1,7 @@
 import { App, Component, MarkdownRenderer, Notice, TFile, setIcon, Menu } from 'obsidian';
 import { NotesheetItem, NotesheetSettings, NotesheetCategory } from '../types';
 import { SyncManager } from '../sync/SyncManager';
+import { renderTextWithIcons } from './IconRenderer';
 
 export interface CardActionCallbacks {
   onUpdate: (item: NotesheetItem) => Promise<void>;
@@ -88,8 +89,9 @@ export class NotesheetCard {
       const dot = banner.createSpan({ cls: 'category-color-dot' });
       dot.style.backgroundColor = category.color;
 
-      const title = banner.createSpan({ text: category.name, cls: 'category-banner-title' });
+      const title = banner.createSpan({ cls: 'category-banner-title' });
       title.style.color = category.color;
+      renderTextWithIcons(title, category.name);
     }
 
     // Top action bar
@@ -124,11 +126,12 @@ export class NotesheetCard {
       this.openCategoryMenu(e);
     });
 
-    const displayTitle = this.cleanFormatting(this.item.title || '');
+    const displayTitle = this.cleanFormatting(this.item.title || '', true);
 
     if (this.settings.showCardTitles && displayTitle && !this.options.hideCardTitle) {
-      const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title', text: displayTitle });
-      titleEl.title = displayTitle;
+      const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title' });
+      renderTextWithIcons(titleEl, displayTitle);
+      titleEl.title = this.cleanFormatting(displayTitle, false);
     }
 
     if (this.item.sourceFile && this.settings.showSourceLinks) {
@@ -217,10 +220,9 @@ export class NotesheetCard {
   /**
    * Cleans icon shortcodes, markdown markers, and trailing punctuation from titles.
    */
-  private cleanFormatting(text: string): string {
+  private cleanFormatting(text: string, preserveShortcodes = false): string {
     if (!text) return '';
-    return text
-      .replace(/:[a-zA-Z0-9_-]+:\s*/g, '')
+    let res = text
       .replace(/^#{1,6}\s+/, '')
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
@@ -229,6 +231,12 @@ export class NotesheetCard {
       .replace(/`([^`]+)`/g, '$1')
       .replace(/[:\s-]+$/, '')
       .trim();
+
+    if (!preserveShortcodes) {
+      res = res.replace(/:[a-zA-Z0-9_-]+:\s*/g, '').trim();
+    }
+
+    return res;
   }
 
   /**
@@ -243,8 +251,8 @@ export class NotesheetCard {
       return content;
     }
 
-    const cleanFirstLine = this.cleanFormatting(lines[0]).toLowerCase();
-    const cleanTitle = this.cleanFormatting(title).toLowerCase();
+    const cleanFirstLine = this.cleanFormatting(lines[0], false).toLowerCase();
+    const cleanTitle = this.cleanFormatting(title, false).toLowerCase();
 
     if (cleanFirstLine && cleanTitle) {
       if (
