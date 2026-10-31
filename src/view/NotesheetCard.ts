@@ -106,20 +106,18 @@ export class NotesheetCard {
     setIcon(dragHandle, 'grip-vertical');
     dragHandle.title = 'Drag to reorder card';
 
-    // Category Quick-Pill (Click to switch category)
+    // Category Quick-Dot (Click to switch category)
     const catPill = headerLeft.createSpan({
       cls: `notesheet-card-category-pill ${category ? 'active' : ''}`
     });
+    const dot = catPill.createSpan({
+      cls: `category-color-dot ${category ? '' : 'unassigned'}`
+    });
     if (category) {
-      const dot = catPill.createSpan({ cls: 'category-color-dot' });
       dot.style.backgroundColor = category.color;
-      if (!this.settings.showCategoryTitles || this.options.hideCategoryBanner) {
-        catPill.createSpan({ text: category.name });
-      }
       catPill.title = `Category: ${category.name} (Click to change)`;
     } else {
-      catPill.createSpan({ text: '+ Category' });
-      catPill.title = 'Assign a category to color-code this card';
+      catPill.title = 'Assign category (Click to choose)';
     }
 
     catPill.addEventListener('click', (e) => {
@@ -133,19 +131,6 @@ export class NotesheetCard {
       const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title' });
       renderTextWithIcons(titleEl, displayTitle);
       titleEl.title = this.cleanFormatting(displayTitle, false);
-    }
-
-    if (this.item.sourceFile && this.settings.showSourceLinks) {
-      const sourceBadge = headerLeft.createSpan({ cls: 'notesheet-card-source-badge' });
-      setIcon(sourceBadge, 'sync');
-      const filename = this.item.sourceFile.split('/').pop()?.replace('.md', '') || 'note';
-      sourceBadge.createSpan({ text: filename });
-      sourceBadge.title = `Synced with: ${this.item.sourceFile} (Click to open note)`;
-
-      sourceBadge.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.openSourceNote();
-      });
     }
 
     // Right side: action buttons
@@ -350,12 +335,17 @@ export class NotesheetCard {
       if (this.item.categoryId === cat.id) opt.selected = true;
     }
 
-    // Source note notification
+    // Source note notification (Sync info shown in edit mode)
     if (this.item.sourceFile && this.item.blockId) {
       const syncInfo = editWrapper.createDiv({ cls: 'notesheet-sync-notice' });
       setIcon(syncInfo, 'refresh-cw');
+      const filename = this.item.sourceFile.split('/').pop()?.replace('.md', '') || this.item.sourceFile;
       syncInfo.createSpan({
-        text: ` Live-linked to "${this.item.sourceFile}". Changes will update the note.`
+        text: ` Live-linked to "${filename}". Changes will update note.`
+      });
+      syncInfo.title = `Source note: ${this.item.sourceFile} (Click to open note)`;
+      syncInfo.addEventListener('click', () => {
+        this.openSourceNote();
       });
     }
 

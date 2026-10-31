@@ -1,7 +1,7 @@
 {
   "id": "obsidian-notesheet",
   "name": "Notesheet",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "minAppVersion": "0.15.0",
   "description": "Exam notesheet organizer for Obsidian. Create 2-page (front & back) cheat sheets from note blocks with live two-way sync and exam print layout.",
   "author": "Gavin Bender",
