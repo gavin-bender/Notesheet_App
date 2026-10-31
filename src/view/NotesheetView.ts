@@ -1,4 +1,4 @@
-import { App, ItemView, WorkspaceLeaf, TFile, Notice, setIcon, Modal, Setting } from 'obsidian';
+import { App, ItemView, WorkspaceLeaf, TFile, Notice, setIcon, Modal, Setting, ViewStateResult } from 'obsidian';
 import { NotesheetData, NotesheetItem, createDefaultNotesheetData } from '../types';
 import { NotesheetStore } from '../storage/NotesheetStore';
 import { SyncManager, NotesheetSyncSubscriber } from '../sync/SyncManager';
@@ -16,9 +16,11 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   private blockManager: BlockManager;
   private data: NotesheetData;
   private currentFile: TFile | null = null;
+  public file: TFile | null = null;
   private activeTab: 'front' | 'back' | 'both' = 'front';
   private cardComponents: Map<string, NotesheetCard> = new Map();
   private initialEditCardId: string | null = null;
+  private pageObservers: ResizeObserver[] = [];
 
   private isAnyCardEditing(): boolean {
     for (const card of this.cardComponents.values()) {
@@ -38,6 +40,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     this.syncManager = syncManager;
     this.blockManager = blockManager;
     this.data = createDefaultNotesheetData();
+    this.navigation = true;
   }
 
   getViewType(): string {
@@ -45,11 +48,32 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   }
 
   getDisplayText(): string {
-    return this.data.title || 'Exam Notesheet';
+    return this.data?.title || this.currentFile?.basename.replace(/\.notesheet$/, '') || 'Exam Notesheet';
   }
 
   getIcon(): string {
     return 'file-spreadsheet';
+  }
+
+  public getState(): Record<string, unknown> {
+    const state = super.getState();
+    state.file = this.currentFile?.path;
+    return state;
+  }
+
+  public async setState(state: any, result?: ViewStateResult): Promise<void> {
+    if (result) {
+      await super.setState(state, result);
+    } else {
+      await super.setState(state);
+    }
+
+    if (state?.file) {
+      const file = this.app.vault.getAbstractFileByPath(state.file);
+      if (file instanceof TFile) {
+        await this.setFile(file);
+      }
+    }
   }
 
   async onload() {
@@ -57,11 +81,18 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     this.syncManager.registerSubscriber(this);
     window.addEventListener('beforeprint', this.handleBeforePrint);
     window.addEventListener('afterprint', this.handleAfterPrint);
+
+    // Add view action icon to switch to raw markdown if desired
+    this.addAction('file-code', 'Open as markdown', () => {
+      this.openAsMarkdown();
+    });
   }
 
   async onunload() {
     window.removeEventListener('beforeprint', this.handleBeforePrint);
     window.removeEventListener('afterprint', this.handleAfterPrint);
+    this.pageObservers.forEach(obs => obs.disconnect());
+    this.pageObservers = [];
     this.cleanPrintContainer();
     this.syncManager.unregisterSubscriber(this);
     super.onunload();
@@ -77,8 +108,28 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
   public async setFile(file: TFile): Promise<void> {
     this.currentFile = file;
+    this.file = file;
     this.data = await this.store.loadNotesheet(file);
     await this.render();
+    (this.leaf as any).updateHeader?.();
+  }
+
+  public onFileRenamed(file: TFile): void {
+    this.currentFile = file;
+    this.file = file;
+    (this.leaf as any).updateHeader?.();
+  }
+
+  public async openAsMarkdown(): Promise<void> {
+    if (!this.currentFile) return;
+    const file = this.currentFile;
+    const leaf = this.leaf;
+    (leaf as any)._notesheetViewMode = 'markdown';
+    await leaf.setViewState({
+      type: 'markdown',
+      state: { file: file.path },
+      active: true
+    });
   }
 
   public async saveData(): Promise<void> {
@@ -152,6 +203,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       onTitleChange: async (newTitle) => {
         this.data.title = newTitle;
         await this.saveData();
+        (this.leaf as any).updateHeader?.();
       },
       onOpenCategoryManager: () => {
         new CategoryManagerModal(this.app, this.data, async () => {
@@ -169,6 +221,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   }
 
   private renderPages(container: HTMLElement): void {
+    this.pageObservers.forEach(obs => obs.disconnect());
+    this.pageObservers = [];
     container.empty();
     this.cardComponents.clear();
 
@@ -430,6 +484,25 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         cls: 'footer-page-num'
       });
     }
+
+    // Observe physical page overflow to alert user when cards exceed 1-page paper height
+    const targetHeight = this.data.settings.pageSize === 'a4' ? 1123 : 1056;
+    const checkOverflow = () => {
+      if (pageSheet.scrollHeight > targetHeight + 10) {
+        pageSheet.classList.add('is-overflowing');
+      } else {
+        pageSheet.classList.remove('is-overflowing');
+      }
+    };
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        checkOverflow();
+      });
+      observer.observe(pageSheet);
+      this.pageObservers.push(observer);
+    }
+    setTimeout(checkOverflow, 200);
   }
 
   private async promptAddCard(): Promise<void> {
@@ -469,15 +542,30 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     printContainer.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
 
+    // Inject dynamic @page style for margins and page size
+    const marginInches = this.data.settings.margins === 'tight' ? '0.2in' : this.data.settings.margins === 'normal' ? '0.5in' : '0.25in';
+    const dynamicStyle = document.createElement('style');
+    dynamicStyle.id = 'notesheet-print-dynamic-style';
+    dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
+    document.head.appendChild(dynamicStyle);
+
     const pageEls = this.contentEl.querySelectorAll<HTMLElement>('.notesheet-page-sheet');
     pageEls.forEach((pageEl) => {
       const clone = pageEl.cloneNode(true) as HTMLElement;
       clone.classList.remove('tab-hidden');
+      clone.classList.remove('is-overflowing');
 
       // Strip non-print controls (copy buttons, edit forms, drag handles, buttons)
       clone.querySelectorAll(
-        '.copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active'
+        '.copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active'
       ).forEach((el) => el.remove());
+
+      // If card header is now empty (no title), remove it so it takes zero space
+      clone.querySelectorAll('.notesheet-card-header').forEach((header) => {
+        if (!header.querySelector('.notesheet-card-title') || header.textContent?.trim() === '') {
+          header.remove();
+        }
+      });
 
       printContainer.appendChild(clone);
     });
@@ -487,6 +575,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
   public cleanPrintContainer(): void {
     document.querySelectorAll('.notesheet-print-container').forEach((el) => el.remove());
+    document.getElementById('notesheet-print-dynamic-style')?.remove();
   }
 
   public printNotesheet(): void {

@@ -163,11 +163,15 @@ export class NotesheetCard {
     });
 
     const displayTitle = this.cleanFormatting(this.item.title || '', true);
+    const hasVisibleTitle = Boolean(this.settings.showCardTitles && displayTitle && !this.options.hideCardTitle);
 
-    if (this.settings.showCardTitles && displayTitle && !this.options.hideCardTitle) {
+    if (hasVisibleTitle) {
+      this.cardEl.removeClass('has-no-title');
       const titleEl = headerLeft.createSpan({ cls: 'notesheet-card-title' });
       renderTextWithIcons(titleEl, displayTitle);
       titleEl.title = this.cleanFormatting(displayTitle, false);
+    } else {
+      this.cardEl.addClass('has-no-title');
     }
 
     // Right side: action buttons
@@ -232,6 +236,19 @@ export class NotesheetCard {
       )
     );
 
+    const stripCodeActions = () => {
+      bodyEl.querySelectorAll(
+        'pre button, .copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, [aria-label*="copy" i], [title*="copy" i]'
+      ).forEach((el) => el.remove());
+    };
+
+    if (typeof MutationObserver !== 'undefined') {
+      const observer = new MutationObserver(() => {
+        stripCodeActions();
+      });
+      observer.observe(bodyEl, { childList: true, subtree: true });
+    }
+
     MarkdownRenderer.render(
       this.app,
       contentToRender,
@@ -239,6 +256,9 @@ export class NotesheetCard {
       this.item.sourceFile || '',
       this.component
     ).then(() => {
+      stripCodeActions();
+      requestAnimationFrame(stripCodeActions);
+      setTimeout(stripCodeActions, 50);
       highlightCodeBlocks(bodyEl);
     });
 

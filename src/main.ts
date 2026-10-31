@@ -10,12 +10,15 @@ import { BlockManager } from './sync/BlockManager';
 import { SyncManager } from './sync/SyncManager';
 import { NotesheetView, NOTESHEET_VIEW_TYPE } from './view/NotesheetView';
 import { NotesheetSettingTab } from './settings/SettingsTab';
+import { patchWorkspaceLeafOpenFile } from './utils/monkeyPatch';
+import { FileExplorerDecorator } from './view/FileExplorerDecorator';
 
 export default class NotesheetPlugin extends Plugin {
   public settings: PluginSettings;
   public store: NotesheetStore;
   public blockManager: BlockManager;
   public syncManager: SyncManager;
+  public fileExplorerDecorator: FileExplorerDecorator;
 
   async onload() {
     console.log('Loading Notesheet plugin...');
@@ -38,6 +41,9 @@ export default class NotesheetPlugin extends Plugin {
       // Ignore if already registered
     }
 
+    // Intercept opening files so clicking a notesheet in File Explorer loads NotesheetView
+    this.register(patchWorkspaceLeafOpenFile(this));
+
     // Register Vault Modification listener for Two-Way Sync
     this.registerEvent(
       this.app.vault.on('modify', (file) => {
@@ -47,6 +53,93 @@ export default class NotesheetPlugin extends Plugin {
       })
     );
 
+    // Decorate File Explorer and Quick Switcher with NOTESHEET filetype tags
+    this.fileExplorerDecorator = new FileExplorerDecorator(this.app, this.store);
+    this.fileExplorerDecorator.init();
+
+    this.registerEvent(
+      this.app.workspace.on('layout-change', () => this.fileExplorerDecorator.onLayoutChange())
+    );
+
+    // Watch for file rename and delete to update active paths, views, and file explorer tags
+    this.registerEvent(
+      this.app.vault.on('rename', async (file, oldPath) => {
+        if (file instanceof TFile) {
+          if (this.settings.activeNotesheetPath === oldPath) {
+            this.settings.activeNotesheetPath = file.path;
+            await this.saveSettings();
+          }
+
+          const leaves = this.app.workspace.getLeavesOfType(NOTESHEET_VIEW_TYPE);
+          for (const leaf of leaves) {
+            const v = leaf.view as NotesheetView;
+            if (v.getNotesheetFile()?.path === oldPath) {
+              v.onFileRenamed(file);
+            }
+          }
+
+          this.fileExplorerDecorator.update();
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on('delete', async (file) => {
+        if (file instanceof TFile) {
+          if (this.settings.activeNotesheetPath === file.path) {
+            this.settings.activeNotesheetPath = '';
+            await this.saveSettings();
+          }
+          this.fileExplorerDecorator.update();
+        }
+      })
+    );
+
+    this.registerEvent(
+      this.app.vault.on('create', () => {
+        this.fileExplorerDecorator.update();
+      })
+    );
+
+    // Safety net: when a notesheet file is opened in active leaf, ensure it renders in Notesheet view
+    this.registerEvent(
+      this.app.workspace.on('file-open', async (file) => {
+        if (!file || !(file instanceof TFile)) return;
+        if (this.store.isNotesheetFile(file)) {
+          this.settings.activeNotesheetPath = file.path;
+          await this.saveSettings();
+
+          const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView)?.leaf;
+          if (activeLeaf && (activeLeaf as any)._notesheetViewMode !== 'markdown') {
+            await activeLeaf.setViewState({
+              type: NOTESHEET_VIEW_TYPE,
+              state: { file: file.path },
+              active: true
+            });
+          }
+        }
+      })
+    );
+
+    // When Obsidian finishes loading layout, convert any already-open markdown tabs with notesheets
+    this.app.workspace.onLayoutReady(() => {
+      this.app.workspace.iterateAllLeaves((leaf) => {
+        if (
+          leaf.view instanceof MarkdownView &&
+          leaf.view.file &&
+          this.store.isNotesheetFile(leaf.view.file) &&
+          (leaf as any)._notesheetViewMode !== 'markdown'
+        ) {
+          const file = leaf.view.file;
+          leaf.setViewState({
+            type: NOTESHEET_VIEW_TYPE,
+            state: { file: file.path },
+            active: leaf === this.app.workspace.getActiveViewOfType(MarkdownView)?.leaf
+          });
+        }
+      });
+    });
+
     // Ribbon icon: Open or create Notesheet
     this.addRibbonIcon('file-spreadsheet', 'Open Exam Notesheet', async () => {
       await this.openOrCreateNotesheet();
@@ -55,7 +148,22 @@ export default class NotesheetPlugin extends Plugin {
     // Editor context menu items
     this.registerEvent(
       this.app.workspace.on('editor-menu', (menu, editor, view) => {
-        if (!view.file || this.store.isNotesheetFile(view.file)) {
+        if (!view.file) return;
+
+        if (this.store.isNotesheetFile(view.file)) {
+          menu.addItem((item) => {
+            item
+              .setTitle('Open in Notesheet View')
+              .setIcon('file-spreadsheet')
+              .onClick(async () => {
+                delete (view.leaf as any)._notesheetViewMode;
+                await view.leaf.setViewState({
+                  type: NOTESHEET_VIEW_TYPE,
+                  state: { file: view.file!.path },
+                  active: true
+                });
+              });
+          });
           return;
         }
 
@@ -81,7 +189,7 @@ export default class NotesheetPlugin extends Plugin {
 
     // File context menu (File Explorer right-click)
     this.registerEvent(
-      this.app.workspace.on('file-menu', (menu, file) => {
+      this.app.workspace.on('file-menu', (menu, file, source, leaf) => {
         if (file instanceof TFile && this.store.isNotesheetFile(file)) {
           menu.addItem((item) => {
             item
@@ -89,6 +197,21 @@ export default class NotesheetPlugin extends Plugin {
               .setIcon('file-spreadsheet')
               .onClick(async () => {
                 await this.openNotesheetFile(file);
+              });
+          });
+
+          menu.addItem((item) => {
+            item
+              .setTitle('Open as Markdown')
+              .setIcon('file-code')
+              .onClick(async () => {
+                const targetLeaf = leaf || this.app.workspace.getLeaf(false);
+                (targetLeaf as any)._notesheetViewMode = 'markdown';
+                await targetLeaf.setViewState({
+                  type: 'markdown',
+                  state: { file: file.path },
+                  active: true
+                });
               });
           });
         }
@@ -109,6 +232,41 @@ export default class NotesheetPlugin extends Plugin {
       name: 'Create new exam Notesheet',
       callback: async () => {
         await this.promptCreateNewNotesheet();
+      }
+    });
+
+    this.addCommand({
+      id: 'toggle-notesheet-view',
+      name: 'Toggle between Notesheet and Markdown view',
+      checkCallback: (checking: boolean) => {
+        const activeLeaf =
+          this.app.workspace.getActiveViewOfType(NotesheetView)?.leaf ||
+          this.app.workspace.getActiveViewOfType(MarkdownView)?.leaf;
+        if (!activeLeaf) return false;
+
+        const currentFile =
+          (activeLeaf.view as any)?.file ||
+          (activeLeaf.view as any)?.getNotesheetFile?.();
+        if (!currentFile || !this.store.isNotesheetFile(currentFile)) return false;
+
+        if (!checking) {
+          if (activeLeaf.view.getViewType() === NOTESHEET_VIEW_TYPE) {
+            (activeLeaf as any)._notesheetViewMode = 'markdown';
+            activeLeaf.setViewState({
+              type: 'markdown',
+              state: { file: currentFile.path },
+              active: true
+            });
+          } else {
+            delete (activeLeaf as any)._notesheetViewMode;
+            activeLeaf.setViewState({
+              type: NOTESHEET_VIEW_TYPE,
+              state: { file: currentFile.path },
+              active: true
+            });
+          }
+        }
+        return true;
       }
     });
 
@@ -149,6 +307,7 @@ export default class NotesheetPlugin extends Plugin {
 
   async onunload() {
     console.log('Unloading Notesheet plugin...');
+    this.fileExplorerDecorator?.unload();
     this.app.workspace.detachLeavesOfType(NOTESHEET_VIEW_TYPE);
   }
 
@@ -239,13 +398,13 @@ export default class NotesheetPlugin extends Plugin {
     if (!leaf) {
       // Open in a split leaf to the right so user can view notes and notesheet simultaneously!
       leaf = this.app.workspace.getLeaf('split', 'vertical');
-      await leaf.setViewState({ type: NOTESHEET_VIEW_TYPE, active: true });
+      await leaf.setViewState({ type: NOTESHEET_VIEW_TYPE, active: true, state: { file: file.path } });
     } else {
       this.app.workspace.revealLeaf(leaf);
+      const view = leaf.view as NotesheetView;
+      await view.setFile(file);
     }
 
-    const view = leaf.view as NotesheetView;
-    await view.setFile(file);
     this.settings.activeNotesheetPath = file.path;
     await this.saveSettings();
   }

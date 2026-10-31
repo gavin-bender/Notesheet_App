@@ -150,16 +150,7 @@ ${jsonStr}
    */
   public getAllNotesheets(): TFile[] {
     const files = this.app.vault.getFiles();
-    return files.filter(f => {
-      if (f.name.endsWith('.notesheet.md') || f.extension === 'notesheet') {
-        return true;
-      }
-      const cache = this.app.metadataCache.getFileCache(f);
-      if (cache?.frontmatter && cache.frontmatter.notesheet === true) {
-        return true;
-      }
-      return false;
-    });
+    return files.filter(f => this.isNotesheetFile(f));
   }
 
   /**
@@ -167,10 +158,20 @@ ${jsonStr}
    */
   public isNotesheetFile(file: TFile | null): boolean {
     if (!file) return false;
-    if (file.name.endsWith('.notesheet.md') || file.extension === 'notesheet') {
+    if (
+      file.name.endsWith('.notesheet.md') ||
+      file.name.endsWith('.notesheet.markdown') ||
+      file.extension === 'notesheet'
+    ) {
       return true;
     }
     const cache = this.app.metadataCache.getFileCache(file);
-    return cache?.frontmatter?.notesheet === true;
+    if (cache?.frontmatter) {
+      const val = cache.frontmatter.notesheet;
+      if (val === true || val === 'true' || val === 'yes') {
+        return true;
+      }
+    }
+    return false;
   }
 }

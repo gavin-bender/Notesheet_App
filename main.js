@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => NotesheetPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian12 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/types.ts
 var DEFAULT_CATEGORIES = [
@@ -206,27 +206,24 @@ ${jsonStr}
    */
   getAllNotesheets() {
     const files = this.app.vault.getFiles();
-    return files.filter((f) => {
-      if (f.name.endsWith(".notesheet.md") || f.extension === "notesheet") {
-        return true;
-      }
-      const cache = this.app.metadataCache.getFileCache(f);
-      if (cache?.frontmatter && cache.frontmatter.notesheet === true) {
-        return true;
-      }
-      return false;
-    });
+    return files.filter((f) => this.isNotesheetFile(f));
   }
   /**
    * Determine if a file is a notesheet.
    */
   isNotesheetFile(file) {
     if (!file) return false;
-    if (file.name.endsWith(".notesheet.md") || file.extension === "notesheet") {
+    if (file.name.endsWith(".notesheet.md") || file.name.endsWith(".notesheet.markdown") || file.extension === "notesheet") {
       return true;
     }
     const cache = this.app.metadataCache.getFileCache(file);
-    return cache?.frontmatter?.notesheet === true;
+    if (cache?.frontmatter) {
+      const val = cache.frontmatter.notesheet;
+      if (val === true || val === "true" || val === "yes") {
+        return true;
+      }
+    }
+    return false;
   }
 };
 
@@ -1137,10 +1134,14 @@ var NotesheetCard = class {
       this.openCategoryMenu(e);
     });
     const displayTitle = this.cleanFormatting(this.item.title || "", true);
-    if (this.settings.showCardTitles && displayTitle && !this.options.hideCardTitle) {
+    const hasVisibleTitle = Boolean(this.settings.showCardTitles && displayTitle && !this.options.hideCardTitle);
+    if (hasVisibleTitle) {
+      this.cardEl.removeClass("has-no-title");
       const titleEl = headerLeft.createSpan({ cls: "notesheet-card-title" });
       renderTextWithIcons(titleEl, displayTitle);
       titleEl.title = this.cleanFormatting(displayTitle, false);
+    } else {
+      this.cardEl.addClass("has-no-title");
     }
     const actionsEl = headerEl.createDiv({ cls: "notesheet-card-actions" });
     const targetPage = this.currentPageId === "front" ? "back" : "front";
@@ -1190,6 +1191,17 @@ var NotesheetCard = class {
         this.settings.showCardTitles
       )
     );
+    const stripCodeActions = () => {
+      bodyEl.querySelectorAll(
+        'pre button, .copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, [aria-label*="copy" i], [title*="copy" i]'
+      ).forEach((el) => el.remove());
+    };
+    if (typeof MutationObserver !== "undefined") {
+      const observer = new MutationObserver(() => {
+        stripCodeActions();
+      });
+      observer.observe(bodyEl, { childList: true, subtree: true });
+    }
     import_obsidian7.MarkdownRenderer.render(
       this.app,
       contentToRender,
@@ -1197,6 +1209,9 @@ var NotesheetCard = class {
       this.item.sourceFile || "",
       this.component
     ).then(() => {
+      stripCodeActions();
+      requestAnimationFrame(stripCodeActions);
+      setTimeout(stripCodeActions, 50);
       highlightCodeBlocks(bodyEl);
     });
     this.cardEl.addEventListener("dblclick", (e) => {
@@ -1698,9 +1713,11 @@ var NotesheetView = class extends import_obsidian10.ItemView {
   constructor(leaf, store, syncManager, blockManager) {
     super(leaf);
     this.currentFile = null;
+    this.file = null;
     this.activeTab = "front";
     this.cardComponents = /* @__PURE__ */ new Map();
     this.initialEditCardId = null;
+    this.pageObservers = [];
     this.handleBeforePrint = () => {
       if (this.containerEl && document.body.contains(this.containerEl) && this.containerEl.offsetWidth > 0) {
         this.setupPrintContainer();
@@ -1713,6 +1730,7 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     this.syncManager = syncManager;
     this.blockManager = blockManager;
     this.data = createDefaultNotesheetData();
+    this.navigation = true;
   }
   isAnyCardEditing() {
     for (const card of this.cardComponents.values()) {
@@ -1724,20 +1742,43 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     return NOTESHEET_VIEW_TYPE;
   }
   getDisplayText() {
-    return this.data.title || "Exam Notesheet";
+    return this.data?.title || this.currentFile?.basename.replace(/\.notesheet$/, "") || "Exam Notesheet";
   }
   getIcon() {
     return "file-spreadsheet";
+  }
+  getState() {
+    const state = super.getState();
+    state.file = this.currentFile?.path;
+    return state;
+  }
+  async setState(state, result) {
+    if (result) {
+      await super.setState(state, result);
+    } else {
+      await super.setState(state);
+    }
+    if (state?.file) {
+      const file = this.app.vault.getAbstractFileByPath(state.file);
+      if (file instanceof import_obsidian10.TFile) {
+        await this.setFile(file);
+      }
+    }
   }
   async onload() {
     super.onload();
     this.syncManager.registerSubscriber(this);
     window.addEventListener("beforeprint", this.handleBeforePrint);
     window.addEventListener("afterprint", this.handleAfterPrint);
+    this.addAction("file-code", "Open as markdown", () => {
+      this.openAsMarkdown();
+    });
   }
   async onunload() {
     window.removeEventListener("beforeprint", this.handleBeforePrint);
     window.removeEventListener("afterprint", this.handleAfterPrint);
+    this.pageObservers.forEach((obs) => obs.disconnect());
+    this.pageObservers = [];
     this.cleanPrintContainer();
     this.syncManager.unregisterSubscriber(this);
     super.onunload();
@@ -1750,8 +1791,26 @@ var NotesheetView = class extends import_obsidian10.ItemView {
   }
   async setFile(file) {
     this.currentFile = file;
+    this.file = file;
     this.data = await this.store.loadNotesheet(file);
     await this.render();
+    this.leaf.updateHeader?.();
+  }
+  onFileRenamed(file) {
+    this.currentFile = file;
+    this.file = file;
+    this.leaf.updateHeader?.();
+  }
+  async openAsMarkdown() {
+    if (!this.currentFile) return;
+    const file = this.currentFile;
+    const leaf = this.leaf;
+    leaf._notesheetViewMode = "markdown";
+    await leaf.setViewState({
+      type: "markdown",
+      state: { file: file.path },
+      active: true
+    });
   }
   async saveData() {
     if (this.currentFile) {
@@ -1817,6 +1876,7 @@ var NotesheetView = class extends import_obsidian10.ItemView {
       onTitleChange: async (newTitle) => {
         this.data.title = newTitle;
         await this.saveData();
+        this.leaf.updateHeader?.();
       },
       onOpenCategoryManager: () => {
         new CategoryManagerModal(this.app, this.data, async () => {
@@ -1830,6 +1890,8 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     this.renderPages(pagesWrapper);
   }
   renderPages(container) {
+    this.pageObservers.forEach((obs) => obs.disconnect());
+    this.pageObservers = [];
     container.empty();
     this.cardComponents.clear();
     for (const page of this.data.pages) {
@@ -2036,6 +2098,22 @@ var NotesheetView = class extends import_obsidian10.ItemView {
         cls: "footer-page-num"
       });
     }
+    const targetHeight = this.data.settings.pageSize === "a4" ? 1123 : 1056;
+    const checkOverflow = () => {
+      if (pageSheet.scrollHeight > targetHeight + 10) {
+        pageSheet.classList.add("is-overflowing");
+      } else {
+        pageSheet.classList.remove("is-overflowing");
+      }
+    };
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => {
+        checkOverflow();
+      });
+      observer.observe(pageSheet);
+      this.pageObservers.push(observer);
+    }
+    setTimeout(checkOverflow, 200);
   }
   async promptAddCard() {
     const targetPageId = this.activeTab === "back" ? "back" : "front";
@@ -2060,19 +2138,31 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     const printContainer = document.body.createDiv({ cls: "print notesheet-print-container" });
     printContainer.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
+    const marginInches = this.data.settings.margins === "tight" ? "0.2in" : this.data.settings.margins === "normal" ? "0.5in" : "0.25in";
+    const dynamicStyle = document.createElement("style");
+    dynamicStyle.id = "notesheet-print-dynamic-style";
+    dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
+    document.head.appendChild(dynamicStyle);
     const pageEls = this.contentEl.querySelectorAll(".notesheet-page-sheet");
     pageEls.forEach((pageEl) => {
       const clone = pageEl.cloneNode(true);
       clone.classList.remove("tab-hidden");
+      clone.classList.remove("is-overflowing");
       clone.querySelectorAll(
-        ".copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active"
+        ".copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active"
       ).forEach((el) => el.remove());
+      clone.querySelectorAll(".notesheet-card-header").forEach((header) => {
+        if (!header.querySelector(".notesheet-card-title") || header.textContent?.trim() === "") {
+          header.remove();
+        }
+      });
       printContainer.appendChild(clone);
     });
     return printContainer;
   }
   cleanPrintContainer() {
     document.querySelectorAll(".notesheet-print-container").forEach((el) => el.remove());
+    document.getElementById("notesheet-print-dynamic-style")?.remove();
   }
   printNotesheet() {
     new import_obsidian10.Notice("Notesheet: Preparing 2-page print & PDF export...");
@@ -2160,8 +2250,183 @@ var NotesheetSettingTab = class extends import_obsidian11.PluginSettingTab {
   }
 };
 
+// src/utils/monkeyPatch.ts
+var import_obsidian12 = require("obsidian");
+function around(obj, factories) {
+  const removers = [];
+  for (const key of Object.keys(factories)) {
+    const original = obj[key];
+    const factory = factories[key];
+    if (typeof original === "function" && factory) {
+      const wrapped = factory(original);
+      obj[key] = wrapped;
+      removers.push(() => {
+        if (obj[key] === wrapped) {
+          obj[key] = original;
+        }
+      });
+    }
+  }
+  return () => {
+    for (const remove of removers) remove();
+  };
+}
+function patchWorkspaceLeafOpenFile(plugin) {
+  return around(import_obsidian12.WorkspaceLeaf.prototype, {
+    openFile(oldOpenFile) {
+      return async function(file, openState) {
+        if (file instanceof import_obsidian12.TFile && plugin.store.isNotesheetFile(file)) {
+          delete this._notesheetViewMode;
+          if (this.view instanceof NotesheetView && this.view.getNotesheetFile()?.path === file.path) {
+            plugin.app.workspace.revealLeaf(this);
+            return;
+          }
+          await this.setViewState(
+            {
+              type: NOTESHEET_VIEW_TYPE,
+              active: openState?.active ?? true,
+              state: { file: file.path }
+            },
+            openState?.eState
+          );
+          plugin.settings.activeNotesheetPath = file.path;
+          await plugin.saveSettings();
+          return;
+        }
+        return oldOpenFile.call(this, file, openState);
+      };
+    }
+  });
+}
+
+// src/view/FileExplorerDecorator.ts
+var import_obsidian13 = require("obsidian");
+var FileExplorerDecorator = class {
+  constructor(app, store) {
+    this.observer = null;
+    this.isUnloaded = false;
+    this.app = app;
+    this.store = store;
+    this.debouncedUpdate = (0, import_obsidian13.debounce)(this.update.bind(this), 50, true);
+  }
+  init() {
+    this.update();
+    this.setupObserver();
+  }
+  unload() {
+    this.isUnloaded = true;
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
+    this.revertAll();
+  }
+  update() {
+    if (this.isUnloaded) return;
+    this.decorateFileExplorer();
+    this.decorateSuggestions();
+  }
+  /**
+   * Decorates items in the File Explorer sidebar (.nav-file-title)
+   */
+  decorateFileExplorer() {
+    const fileExplorerLeaves = this.app.workspace.getLeavesOfType("file-explorer");
+    for (const leaf of fileExplorerLeaves) {
+      const container = leaf.view?.containerEl;
+      if (!container) continue;
+      const titleEls = container.querySelectorAll(".nav-file-title");
+      titleEls.forEach((selfEl) => {
+        const path = selfEl.dataset.path || selfEl.getAttribute("data-path");
+        if (!path) return;
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (file instanceof import_obsidian13.TFile && this.store.isNotesheetFile(file)) {
+          this.decorateFileExplorerItem(selfEl, file);
+        }
+      });
+    }
+  }
+  decorateFileExplorerItem(selfEl, file) {
+    const titleEl = selfEl.querySelector(".nav-file-title-content");
+    if (!titleEl) return;
+    if (titleEl.querySelector("input")) return;
+    this.stripNotesheetSuffix(titleEl);
+    let tagEl = selfEl.querySelector(".notesheet-file-tag");
+    if (!tagEl) {
+      tagEl = selfEl.createSpan({
+        cls: "nav-file-tag notesheet-file-tag",
+        text: "notesheet"
+      });
+    } else if (tagEl.textContent !== "notesheet") {
+      tagEl.textContent = "notesheet";
+    }
+  }
+  /**
+   * Decorates items in Quick Switcher and suggestion popups (.suggestion-item)
+   */
+  decorateSuggestions() {
+    const suggestionEls = document.querySelectorAll(".suggestion-item");
+    if (suggestionEls.length === 0) return;
+    suggestionEls.forEach((itemEl) => {
+      const titleEl = itemEl.querySelector(".suggestion-title");
+      if (!titleEl || !titleEl.textContent) return;
+      const rawTitle = titleEl.textContent;
+      if (rawTitle.endsWith(".notesheet") || rawTitle.includes(".notesheet.")) {
+        this.stripNotesheetSuffix(titleEl);
+        let flairEl = itemEl.querySelector(".notesheet-flair");
+        if (!flairEl) {
+          flairEl = itemEl.createSpan({
+            cls: "suggestion-flair notesheet-flair",
+            text: "NOTESHEET"
+          });
+        } else if (flairEl.textContent !== "NOTESHEET") {
+          flairEl.textContent = "NOTESHEET";
+        }
+      }
+    });
+  }
+  stripNotesheetSuffix(el) {
+    if (el.lastChild && el.lastChild.nodeType === Node.TEXT_NODE && el.lastChild.textContent) {
+      if (el.lastChild.textContent.endsWith(".notesheet")) {
+        if (!el.dataset.originalText) {
+          el.dataset.originalText = el.textContent || "";
+        }
+        el.lastChild.textContent = el.lastChild.textContent.replace(/\.notesheet$/, "");
+      }
+    } else if (el.textContent && el.textContent.endsWith(".notesheet")) {
+      if (!el.dataset.originalText) {
+        el.dataset.originalText = el.textContent;
+      }
+      el.textContent = el.textContent.replace(/\.notesheet$/, "");
+    }
+  }
+  setupObserver() {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+    this.observer = new MutationObserver(() => {
+      this.debouncedUpdate();
+    });
+    this.observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+  onLayoutChange() {
+    this.debouncedUpdate();
+  }
+  revertAll() {
+    document.querySelectorAll(".notesheet-file-tag, .notesheet-flair").forEach((el) => el.remove());
+    document.querySelectorAll(".nav-file-title-content, .suggestion-title").forEach((el) => {
+      if (el.dataset.originalText) {
+        el.textContent = el.dataset.originalText;
+        delete el.dataset.originalText;
+      }
+    });
+  }
+};
+
 // src/main.ts
-var NotesheetPlugin = class extends import_obsidian12.Plugin {
+var NotesheetPlugin = class extends import_obsidian14.Plugin {
   async onload() {
     console.log("Loading Notesheet plugin...");
     await this.loadSettings();
@@ -2176,19 +2441,99 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
       this.registerExtensions(["notesheet"], NOTESHEET_VIEW_TYPE);
     } catch (e) {
     }
+    this.register(patchWorkspaceLeafOpenFile(this));
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (file instanceof import_obsidian12.TFile) {
+        if (file instanceof import_obsidian14.TFile) {
           this.syncManager.onFileModified(file);
         }
       })
     );
+    this.fileExplorerDecorator = new FileExplorerDecorator(this.app, this.store);
+    this.fileExplorerDecorator.init();
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => this.fileExplorerDecorator.onLayoutChange())
+    );
+    this.registerEvent(
+      this.app.vault.on("rename", async (file, oldPath) => {
+        if (file instanceof import_obsidian14.TFile) {
+          if (this.settings.activeNotesheetPath === oldPath) {
+            this.settings.activeNotesheetPath = file.path;
+            await this.saveSettings();
+          }
+          const leaves = this.app.workspace.getLeavesOfType(NOTESHEET_VIEW_TYPE);
+          for (const leaf of leaves) {
+            const v = leaf.view;
+            if (v.getNotesheetFile()?.path === oldPath) {
+              v.onFileRenamed(file);
+            }
+          }
+          this.fileExplorerDecorator.update();
+        }
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("delete", async (file) => {
+        if (file instanceof import_obsidian14.TFile) {
+          if (this.settings.activeNotesheetPath === file.path) {
+            this.settings.activeNotesheetPath = "";
+            await this.saveSettings();
+          }
+          this.fileExplorerDecorator.update();
+        }
+      })
+    );
+    this.registerEvent(
+      this.app.vault.on("create", () => {
+        this.fileExplorerDecorator.update();
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on("file-open", async (file) => {
+        if (!file || !(file instanceof import_obsidian14.TFile)) return;
+        if (this.store.isNotesheetFile(file)) {
+          this.settings.activeNotesheetPath = file.path;
+          await this.saveSettings();
+          const activeLeaf = this.app.workspace.getActiveViewOfType(import_obsidian14.MarkdownView)?.leaf;
+          if (activeLeaf && activeLeaf._notesheetViewMode !== "markdown") {
+            await activeLeaf.setViewState({
+              type: NOTESHEET_VIEW_TYPE,
+              state: { file: file.path },
+              active: true
+            });
+          }
+        }
+      })
+    );
+    this.app.workspace.onLayoutReady(() => {
+      this.app.workspace.iterateAllLeaves((leaf) => {
+        if (leaf.view instanceof import_obsidian14.MarkdownView && leaf.view.file && this.store.isNotesheetFile(leaf.view.file) && leaf._notesheetViewMode !== "markdown") {
+          const file = leaf.view.file;
+          leaf.setViewState({
+            type: NOTESHEET_VIEW_TYPE,
+            state: { file: file.path },
+            active: leaf === this.app.workspace.getActiveViewOfType(import_obsidian14.MarkdownView)?.leaf
+          });
+        }
+      });
+    });
     this.addRibbonIcon("file-spreadsheet", "Open Exam Notesheet", async () => {
       await this.openOrCreateNotesheet();
     });
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor, view) => {
-        if (!view.file || this.store.isNotesheetFile(view.file)) {
+        if (!view.file) return;
+        if (this.store.isNotesheetFile(view.file)) {
+          menu.addItem((item) => {
+            item.setTitle("Open in Notesheet View").setIcon("file-spreadsheet").onClick(async () => {
+              delete view.leaf._notesheetViewMode;
+              await view.leaf.setViewState({
+                type: NOTESHEET_VIEW_TYPE,
+                state: { file: view.file.path },
+                active: true
+              });
+            });
+          });
           return;
         }
         menu.addItem((item) => {
@@ -2204,11 +2549,22 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
       })
     );
     this.registerEvent(
-      this.app.workspace.on("file-menu", (menu, file) => {
-        if (file instanceof import_obsidian12.TFile && this.store.isNotesheetFile(file)) {
+      this.app.workspace.on("file-menu", (menu, file, source, leaf) => {
+        if (file instanceof import_obsidian14.TFile && this.store.isNotesheetFile(file)) {
           menu.addItem((item) => {
             item.setTitle("Open in Notesheet View").setIcon("file-spreadsheet").onClick(async () => {
               await this.openNotesheetFile(file);
+            });
+          });
+          menu.addItem((item) => {
+            item.setTitle("Open as Markdown").setIcon("file-code").onClick(async () => {
+              const targetLeaf = leaf || this.app.workspace.getLeaf(false);
+              targetLeaf._notesheetViewMode = "markdown";
+              await targetLeaf.setViewState({
+                type: "markdown",
+                state: { file: file.path },
+                active: true
+              });
             });
           });
         }
@@ -2226,6 +2582,34 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
       name: "Create new exam Notesheet",
       callback: async () => {
         await this.promptCreateNewNotesheet();
+      }
+    });
+    this.addCommand({
+      id: "toggle-notesheet-view",
+      name: "Toggle between Notesheet and Markdown view",
+      checkCallback: (checking) => {
+        const activeLeaf = this.app.workspace.getActiveViewOfType(NotesheetView)?.leaf || this.app.workspace.getActiveViewOfType(import_obsidian14.MarkdownView)?.leaf;
+        if (!activeLeaf) return false;
+        const currentFile = activeLeaf.view?.file || activeLeaf.view?.getNotesheetFile?.();
+        if (!currentFile || !this.store.isNotesheetFile(currentFile)) return false;
+        if (!checking) {
+          if (activeLeaf.view.getViewType() === NOTESHEET_VIEW_TYPE) {
+            activeLeaf._notesheetViewMode = "markdown";
+            activeLeaf.setViewState({
+              type: "markdown",
+              state: { file: currentFile.path },
+              active: true
+            });
+          } else {
+            delete activeLeaf._notesheetViewMode;
+            activeLeaf.setViewState({
+              type: NOTESHEET_VIEW_TYPE,
+              state: { file: currentFile.path },
+              active: true
+            });
+          }
+        }
+        return true;
       }
     });
     this.addCommand({
@@ -2260,6 +2644,7 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
   }
   async onunload() {
     console.log("Unloading Notesheet plugin...");
+    this.fileExplorerDecorator?.unload();
     this.app.workspace.detachLeavesOfType(NOTESHEET_VIEW_TYPE);
   }
   async loadSettings() {
@@ -2274,7 +2659,7 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
   async handleAddToNotesheet(editor, view, targetPageId) {
     const file = view.file;
     if (!file) {
-      new import_obsidian12.Notice("No active note to add from.");
+      new import_obsidian14.Notice("No active note to add from.");
       return;
     }
     const extraction = this.blockManager.extractOrAttachBlockId(editor, file);
@@ -2309,7 +2694,7 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
         await v.setFile(sheetFile);
       }
     }
-    new import_obsidian12.Notice(
+    new import_obsidian14.Notice(
       `Notesheet: Added "${newItem.title}" to ${targetPageId === "front" ? "Page 1 (Front)" : "Page 2 (Back)"} of "${sheetFile.basename}".`
     );
   }
@@ -2326,12 +2711,12 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
     let leaf = this.app.workspace.getLeavesOfType(NOTESHEET_VIEW_TYPE)[0];
     if (!leaf) {
       leaf = this.app.workspace.getLeaf("split", "vertical");
-      await leaf.setViewState({ type: NOTESHEET_VIEW_TYPE, active: true });
+      await leaf.setViewState({ type: NOTESHEET_VIEW_TYPE, active: true, state: { file: file.path } });
     } else {
       this.app.workspace.revealLeaf(leaf);
+      const view = leaf.view;
+      await view.setFile(file);
     }
-    const view = leaf.view;
-    await view.setFile(file);
     this.settings.activeNotesheetPath = file.path;
     await this.saveSettings();
   }
@@ -2345,7 +2730,7 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
   async resolveTargetNotesheetFile() {
     if (this.settings.activeNotesheetPath) {
       const activeFile = this.app.vault.getAbstractFileByPath(this.settings.activeNotesheetPath);
-      if (activeFile instanceof import_obsidian12.TFile) {
+      if (activeFile instanceof import_obsidian14.TFile) {
         return activeFile;
       }
     }
@@ -2374,13 +2759,13 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
         this.settings.activeNotesheetPath = file.path;
         await this.saveSettings();
         await this.openNotesheetFile(file);
-        new import_obsidian12.Notice(`Created exam notesheet: "${file.basename}"`);
+        new import_obsidian14.Notice(`Created exam notesheet: "${file.basename}"`);
         resolve(file);
       }).open();
     });
   }
 };
-var SelectNotesheetModal = class extends import_obsidian12.Modal {
+var SelectNotesheetModal = class extends import_obsidian14.Modal {
   constructor(app, files, onSelect) {
     super(app);
     this.selected = false;
@@ -2409,7 +2794,7 @@ var SelectNotesheetModal = class extends import_obsidian12.Modal {
     }
   }
 };
-var CreateNotesheetModal = class extends import_obsidian12.Modal {
+var CreateNotesheetModal = class extends import_obsidian14.Modal {
   constructor(app, defaultFolder, onSubmit) {
     super(app);
     this.folder = defaultFolder;
@@ -2420,19 +2805,19 @@ var CreateNotesheetModal = class extends import_obsidian12.Modal {
     contentEl.empty();
     contentEl.createEl("h3", { text: "Create Exam Notesheet" });
     let title = "Final Exam Cheat Sheet";
-    new import_obsidian12.Setting(contentEl).setName("Notesheet Title").setDesc("e.g. Physics 240 Midterm, Calculus II Exam").addText((text) => {
+    new import_obsidian14.Setting(contentEl).setName("Notesheet Title").setDesc("e.g. Physics 240 Midterm, Calculus II Exam").addText((text) => {
       text.setValue(title);
       text.onChange((val) => {
         title = val.trim();
       });
     });
-    new import_obsidian12.Setting(contentEl).setName("Save Folder").setDesc("Folder in vault to store this notesheet").addText((text) => {
+    new import_obsidian14.Setting(contentEl).setName("Save Folder").setDesc("Folder in vault to store this notesheet").addText((text) => {
       text.setValue(this.folder);
       text.onChange((val) => {
         this.folder = val.trim();
       });
     });
-    new import_obsidian12.Setting(contentEl).addButton((btn) => {
+    new import_obsidian14.Setting(contentEl).addButton((btn) => {
       btn.setButtonText("Create Notesheet").setCta().onClick(() => {
         if (!title) title = "Exam Notesheet";
         this.onSubmit(title, this.folder);

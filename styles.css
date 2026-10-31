@@ -216,36 +216,71 @@
   flex-direction: column;
   position: relative;
   transition: transform 0.2s ease;
-  width: 100%;
+  width: 816px;
   max-width: 816px;
   min-height: 1056px;
 }
 
 /* Letter Page Dimensions (Ratio: 8.5 x 11) */
 .notesheet-page-sheet.paper-letter {
-  width: 100%;
+  width: 816px;
   max-width: 816px;
   min-height: 1056px;
 }
 
 /* A4 Page Dimensions (Ratio: 210 x 297mm) */
 .notesheet-page-sheet.paper-a4 {
-  width: 100%;
+  width: 794px;
   max-width: 794px;
   min-height: 1123px;
 }
 
 /* Margin Variations */
 .notesheet-page-sheet.margin-tight {
-  padding: 18px;
+  padding: 19px;
 }
 
 .notesheet-page-sheet.margin-compact {
-  padding: 26px;
+  padding: 24px;
 }
 
 .notesheet-page-sheet.margin-normal {
   padding: 38px;
+}
+
+/* Visual guide when cards overflow the physical 1-page paper height */
+.notesheet-page-sheet.paper-letter.is-overflowing::after {
+  content: '✂ Page Limit (Content below prints on additional page)';
+  position: absolute;
+  top: 1056px;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--text-error, #e53935);
+  color: var(--text-error, #e53935);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: right;
+  padding: 2px 8px;
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(229, 57, 53, 0.05);
+}
+
+.notesheet-page-sheet.paper-a4.is-overflowing::after {
+  content: '✂ Page Limit (Content below prints on additional page)';
+  position: absolute;
+  top: 1123px;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--text-error, #e53935);
+  color: var(--text-error, #e53935);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: right;
+  padding: 2px 8px;
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(229, 57, 53, 0.05);
 }
 
 /* Page Header & Stats */
@@ -254,12 +289,12 @@
   justify-content: space-between;
   align-items: center;
   border-bottom: 2px solid var(--notesheet-border-color);
-  padding-bottom: 6px;
-  margin-bottom: 12px;
+  padding-bottom: 3px;
+  margin-bottom: 6px;
 }
 
 .page-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -267,11 +302,11 @@
 }
 
 .page-stats {
-  font-size: 10px;
+  font-size: 8.5pt;
   font-weight: 600;
   color: var(--text-muted);
   background: var(--background-secondary);
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 10px;
 }
 
@@ -280,9 +315,9 @@
   justify-content: space-between;
   align-items: center;
   border-top: 1px solid var(--notesheet-border-color);
-  padding-top: 6px;
+  padding-top: 3px;
   margin-top: auto;
-  font-size: 9px;
+  font-size: 7.5pt;
   color: var(--text-muted);
 }
 
@@ -292,7 +327,7 @@
 
 .notesheet-columns-grid {
   display: grid;
-  gap: 10px;
+  gap: 6px;
   flex: 1;
   align-items: start;
   width: 100%;
@@ -320,9 +355,9 @@
 .notesheet-column {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 200px;
-  padding: 4px;
+  gap: 6px;
+  min-height: 100px;
+  padding: 0;
   border-radius: 4px;
   transition: background-color 0.15s ease;
   min-width: 0;
@@ -358,7 +393,7 @@
 
 .notesheet-card.has-border {
   border: 1px solid var(--notesheet-border-color);
-  padding: 6px 8px;
+  padding: 4px 6px;
 }
 
 .notesheet-card.no-border {
@@ -393,19 +428,19 @@
 .notesheet-category-banner {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 6px;
-  margin: -6px -8px 5px -8px;
+  gap: 4px;
+  padding: 1px 5px;
+  margin: -4px -6px 3px -6px;
   border-bottom: 1px solid transparent;
-  font-size: 9.5px;
+  font-size: 8pt;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .category-color-dot {
-  width: 7.5px;
-  height: 7.5px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
@@ -430,18 +465,45 @@
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--notesheet-border-color);
-  padding-bottom: 4px;
-  margin-bottom: 4px;
+  padding-bottom: 2px;
+  margin-bottom: 3px;
   gap: 4px;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+  min-height: 16px;
+  line-height: 1.25;
+}
+
+/* When card has no visible title: overlay header controls on hover so zero vertical space is wasted */
+.notesheet-card.has-no-title .notesheet-card-header {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  border-bottom: none;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+  background: var(--notesheet-card-bg, var(--background-primary));
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  width: auto;
+}
+
+.notesheet-card.has-no-title:hover .notesheet-card-header {
+  opacity: 1;
+}
+
+.notesheet-card.has-no-title .notesheet-card-header-left {
+  display: none;
 }
 
 .notesheet-card-header-left {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   overflow: hidden;
   min-width: 0;
   flex: 1 1 auto;
@@ -456,8 +518,8 @@
 }
 
 .notesheet-card-drag-handle svg {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
 }
 
 /* Category Quick Dot */
@@ -486,7 +548,8 @@
 
 .notesheet-card-title {
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--notesheet-font-size, 8.5pt);
+  line-height: 1.25;
   color: var(--text-normal);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -509,8 +572,8 @@
 
 .notesheet-shortcode-icon svg,
 .notesheet-icon-svg {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   stroke-width: 2px;
   stroke: currentColor;
   fill: none;
@@ -521,23 +584,22 @@
   font-size: 1.1em;
   line-height: 1;
 }
-}
 
 .notesheet-card-source-badge {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 9px;
+  font-size: 8.5px;
   color: var(--interactive-accent);
   background: var(--background-secondary);
   border: 1px solid var(--notesheet-border-color);
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 1px 4px;
+  border-radius: 3px;
   cursor: pointer;
   text-decoration: none;
   flex-shrink: 1;
   min-width: 0;
-  max-width: 110px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -569,11 +631,13 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 1px 3px;
   border-radius: 3px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 600;
+  height: 15px;
+  line-height: 1;
 }
 
 .notesheet-btn-icon:hover {
@@ -586,8 +650,39 @@
 }
 
 .notesheet-btn-icon svg {
-  width: 11px;
-  height: 11px;
+  width: 10px;
+  height: 10px;
+}
+
+/* Hide copy buttons and code block actions everywhere in notesheet view */
+.notesheet-view-root pre button,
+.notesheet-view-root .copy-code-button,
+.notesheet-view-root button.copy-code-button,
+.notesheet-view-root .code-block-action,
+.notesheet-view-root .copy-code-button-text,
+.notesheet-view-root .code-block-flair,
+.notesheet-view-root button[aria-label*="copy" i],
+.notesheet-view-root button[title*="copy" i],
+.notesheet-card-body pre button,
+.notesheet-card-body pre .copy-code-button,
+.notesheet-card-body pre .code-block-action,
+.notesheet-card-body .copy-code-button,
+.notesheet-card-body button.copy-code-button,
+.notesheet-card-body .code-block-action,
+.notesheet-card-body .copy-code-button-text,
+.notesheet-card-body .code-block-flair,
+.notesheet-card-body button[aria-label*="copy" i],
+.notesheet-card-body button[title*="copy" i] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  pointer-events: none !important;
+  position: absolute !important;
 }
 
 /* Card Body (Markdown Rendered) */
@@ -600,13 +695,13 @@
 }
 
 .notesheet-card-body pre {
-  margin: 4px 0;
-  padding: 6px 8px;
-  border-radius: 4px;
+  margin: 3px 0;
+  padding: 3px 5px;
+  border-radius: 3px;
   background: var(--code-background, var(--background-secondary));
   border: 1px solid var(--notesheet-border-color);
   font-size: 0.9em;
-  line-height: 1.35;
+  line-height: 1.25;
   overflow-x: auto;
   position: relative;
 }
@@ -616,7 +711,8 @@
   padding: 0 !important;
   border: none !important;
   font-family: var(--font-monospace);
-  font-size: 0.95em;
+  font-size: calc(var(--notesheet-font-size, 8.5pt) - 1pt);
+  line-height: 1.25;
   color: var(--code-normal, var(--text-normal));
   white-space: pre-wrap;
   word-break: break-word;
@@ -624,9 +720,10 @@
 
 .notesheet-card-body :not(pre) > code {
   font-family: var(--font-monospace);
-  font-size: 0.9em;
-  padding: 1px 4px;
-  border-radius: 3px;
+  font-size: calc(var(--notesheet-font-size, 8.5pt) - 1pt);
+  line-height: 1.25;
+  padding: 1px 3px;
+  border-radius: 2px;
   background: var(--code-background, var(--background-secondary));
   color: var(--code-normal, var(--text-normal));
 }
@@ -688,60 +785,67 @@
   color: var(--code-important, #ffa657) !important;
 }
 
-.notesheet-card-body table {
-  width: 100%;
-  max-width: 100%;
-  border-collapse: collapse;
-  font-size: 0.9em;
-  margin: 4px 0;
-  overflow-x: auto;
-  display: block;
-}
-
 .notesheet-card-body p {
-  margin: 2px 0 4px 0;
+  margin: 2px 0;
+  line-height: 1.25;
 }
 
 .notesheet-card-body h1,
 .notesheet-card-body h2,
 .notesheet-card-body h3,
 .notesheet-card-body h4 {
-  margin: 4px 0 2px 0;
-  font-size: 1.15em;
+  margin: 2px 0 1px 0;
+  font-size: 1.05em;
   font-weight: 700;
+  line-height: 1.25;
 }
 
 .notesheet-card-body ul,
 .notesheet-card-body ol {
-  margin: 2px 0 4px 16px;
-  padding: 0;
+  margin: 2px 0;
+  padding: 0 0 0 16px;
+  padding-inline-start: 16px;
 }
 
 .notesheet-card-body li {
-  margin-bottom: 2px;
+  margin: 1px 0;
+  line-height: 1.25;
 }
 
 .notesheet-card-body table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
-  font-size: 0.9em;
-  margin: 4px 0;
+  font-size: 0.88em;
+  line-height: 1.25;
+  margin: 2px 0;
+  overflow-x: auto;
 }
 
 .notesheet-card-body th,
 .notesheet-card-body td {
   border: 1px solid var(--notesheet-border-color);
-  padding: 2px 4px;
+  padding: 1px 4px;
 }
 
 /* KaTeX Math Formatting in Dense Cheat Sheets */
 .notesheet-card-body .math {
-  font-size: 1.05em;
+  font-size: 1em;
 }
 
 .notesheet-card-body .math-block {
-  margin: 3px 0 !important;
-  padding: 2px 0 !important;
+  margin: 2px 0 !important;
+  padding: 1px 0 !important;
+}
+
+.notesheet-card-body blockquote {
+  margin: 2px 0;
+  padding: 1px 6px;
+  border-left: 2px solid var(--interactive-accent);
+}
+
+.notesheet-card-body hr {
+  margin: 3px 0;
 }
 
 /* Card Edit Mode */
@@ -1056,6 +1160,37 @@
 }
 
 /* ========================================================
+   FILE EXPLORER & QUICK SWITCHER FILETYPE TAG
+   ======================================================== */
+
+.nav-file-tag.notesheet-file-tag,
+.suggestion-flair.notesheet-flair {
+  align-self: center;
+  font-size: var(--font-smallest, 10px);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-inline-start: auto;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* Fallback CSS rule for file explorer when data-path matches notesheet */
+.nav-file-title[data-path*=".notesheet"]:not(:has(.nav-file-tag))::after {
+  content: "NOTESHEET";
+  align-self: center;
+  font-size: var(--font-smallest, 10px);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-inline-start: auto;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* ========================================================
    EXAM PRINTING RULES (@media print)
    ======================================================== */
 
@@ -1195,10 +1330,16 @@
     margin-bottom: 3px !important;
   }
 
+  .notesheet-print-container .notesheet-card-header:empty,
+  .notesheet-print-container .notesheet-card-header:not(:has(.notesheet-card-title)) {
+    display: none !important;
+  }
+
   .notesheet-print-container .notesheet-card-title {
     color: #000000 !important;
-    font-size: 8.5pt !important;
+    font-size: var(--notesheet-font-size, 8.5pt) !important;
     font-weight: 700 !important;
+    line-height: 1.25 !important;
   }
 
   .notesheet-print-container .notesheet-card-body {
@@ -1209,6 +1350,7 @@
 
   .notesheet-print-container .notesheet-card-body p {
     margin: 2px 0 !important;
+    line-height: 1.25 !important;
   }
 
   .notesheet-print-container .notesheet-card-body ul,
@@ -1219,6 +1361,7 @@
 
   .notesheet-print-container .notesheet-card-body li {
     margin: 1px 0 !important;
+    line-height: 1.25 !important;
   }
 
   .notesheet-print-container .notesheet-card-body pre {
@@ -1228,12 +1371,14 @@
     padding: 3px 5px !important;
     margin: 3px 0 !important;
     color: #24292f !important;
+    line-height: 1.25 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .notesheet-print-container .notesheet-card-body code {
-    font-size: 7.5pt !important;
+  .notesheet-print-container .notesheet-card-body code,
+  .notesheet-print-container .notesheet-card-body pre code {
+    font-size: calc(var(--notesheet-font-size, 8.5pt) - 1pt) !important;
     line-height: 1.25 !important;
   }
 
@@ -1244,7 +1389,7 @@
   .notesheet-print-container .notesheet-card-body .token.number,
   .notesheet-print-container .notesheet-card-body .token.boolean { color: #0550ae !important; }
 
-  /* Hide all interactive card UI and buttons in print */
+  /* Hide all interactive card UI, guides, and buttons in print */
   .notesheet-print-container .notesheet-card-actions,
   .notesheet-print-container .notesheet-card-drag-handle,
   .notesheet-print-container .notesheet-card-source-badge,
@@ -1255,7 +1400,9 @@
   .notesheet-print-container .copy-code-button,
   .notesheet-print-container button.copy-code-button,
   .notesheet-print-container .code-block-action,
-  .notesheet-print-container .copy-code-button-text {
+  .notesheet-print-container .copy-code-button-text,
+  .notesheet-print-container .code-block-flair,
+  .notesheet-print-container .is-overflowing::after {
     display: none !important;
   }
 
