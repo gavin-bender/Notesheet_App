@@ -13,6 +13,14 @@ export class TFile {}
 export class Component {}
 export class ItemView {}
 export class Modal {}
+export class FuzzySuggestModal {
+  constructor(app) {
+    this.app = app;
+  }
+  setPlaceholder() {}
+  open() {}
+  close() {}
+}
 export class Setting {}
 export function debounce(fn) {
   return fn;
@@ -23,4 +31,7 @@ export function getIcon(name) {
     addClass() {},
     tagName: 'svg'
   };
+}
+export function getIconIds() {
+  return ['layers', 'mouse-pointer', 'code', 'book'];
 }

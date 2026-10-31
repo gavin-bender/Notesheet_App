@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => NotesheetPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/types.ts
 var DEFAULT_CATEGORIES = [
@@ -554,7 +554,7 @@ var SyncManager = class {
 };
 
 // src/view/NotesheetView.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/view/Toolbar.ts
 var import_obsidian3 = require("obsidian");
@@ -733,7 +733,7 @@ var NotesheetToolbar = class {
 };
 
 // src/view/NotesheetCard.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/view/IconRenderer.ts
 var import_obsidian4 = require("obsidian");
@@ -787,12 +787,28 @@ function renderTextWithIcons(container, text) {
     if (!rendered && typeof window !== "undefined" && window.IconSCAPIv0) {
       const api = window.IconSCAPIv0;
       try {
-        if (api.hasIcon && api.hasIcon(shortcode)) {
-          if (api.getSVGIcon) {
-            api.getSVGIcon(shortcode).then((svgEl) => {
+        const idToTry = api.hasIcon && api.hasIcon(shortcode) ? shortcode : api.hasIcon && api.hasIcon(lucideName) ? lucideName : null;
+        if (idToTry) {
+          if (api.getIcon) {
+            const syncRes = api.getIcon(idToTry);
+            if (typeof syncRes === "string") {
+              iconSpan.setText(syncRes);
+              rendered = true;
+            } else if (syncRes instanceof Node) {
+              iconSpan.empty();
+              iconSpan.appendChild(syncRes);
+              rendered = true;
+            }
+          }
+          if (!rendered && api.getSVGIcon) {
+            api.getSVGIcon(idToTry).then((svgEl) => {
               if (svgEl) {
                 iconSpan.empty();
-                iconSpan.appendChild(svgEl);
+                if (typeof svgEl === "string") {
+                  iconSpan.setText(svgEl);
+                } else if (svgEl instanceof Node) {
+                  iconSpan.appendChild(svgEl);
+                }
               }
             });
             rendered = true;
@@ -818,6 +834,138 @@ function renderTextWithIcons(container, text) {
   if (lastIndex < text.length) {
     container.appendText(text.substring(lastIndex));
   }
+}
+
+// src/view/IconPickerHelper.ts
+var import_obsidian5 = require("obsidian");
+var COMMON_LUCIDE_ICONS = [
+  "layers",
+  "mouse-pointer",
+  "code",
+  "terminal",
+  "cpu",
+  "database",
+  "binary",
+  "hash",
+  "calculator",
+  "sigma",
+  "function-square",
+  "book",
+  "book-open",
+  "bookmark",
+  "file-code",
+  "file-text",
+  "sparkles",
+  "lightbulb",
+  "zap",
+  "flame",
+  "check",
+  "check-circle",
+  "x-circle",
+  "alert-triangle",
+  "alert-circle",
+  "info",
+  "clock",
+  "timer",
+  "atom",
+  "compass",
+  "git-branch",
+  "git-commit",
+  "workflow",
+  "share-2",
+  "shield",
+  "key",
+  "lock",
+  "star",
+  "heart",
+  "flag",
+  "tag",
+  "table",
+  "list",
+  "list-ordered",
+  "bar-chart",
+  "activity",
+  "eye",
+  "search",
+  "wrench"
+];
+function insertAtCursor(target, text) {
+  const start = target.selectionStart ?? target.value.length;
+  const end = target.selectionEnd ?? target.value.length;
+  const val = target.value;
+  const textBefore = val.substring(0, start);
+  const colonMatch = textBefore.match(/(:{1,2}[a-zA-Z0-9_-]*)$/);
+  let replaceStart = start;
+  if (colonMatch && colonMatch.index !== void 0) {
+    replaceStart = colonMatch.index;
+  }
+  target.value = val.substring(0, replaceStart) + text + val.substring(end);
+  const newPos = replaceStart + text.length;
+  target.setSelectionRange(newPos, newPos);
+  target.dispatchEvent(new Event("input", { bubbles: true }));
+  target.focus();
+}
+var FallbackIconPickerModal = class extends import_obsidian5.FuzzySuggestModal {
+  constructor(app, onChoose) {
+    super(app);
+    this.onChoose = onChoose;
+    this.setPlaceholder("Search icon (e.g. layers, mouse-pointer, code, book)...");
+  }
+  getItems() {
+    try {
+      if (typeof import_obsidian5.getIconIds === "function") {
+        const all = (0, import_obsidian5.getIconIds)();
+        if (all && all.length > 0) {
+          return all;
+        }
+      }
+    } catch {
+    }
+    return COMMON_LUCIDE_ICONS;
+  }
+  getItemText(item) {
+    return `:luc_${item}: ${item}`;
+  }
+  renderSuggestion(item, el) {
+    el.empty();
+    el.addClass("notesheet-icon-suggest-item");
+    const iconSpan = el.createSpan({ cls: "notesheet-icon-preview" });
+    const svg = (0, import_obsidian5.getIcon)(item.item);
+    if (svg) {
+      svg.addClass("notesheet-icon-svg");
+      iconSpan.appendChild(svg);
+    }
+    const nameSpan = el.createSpan({ text: `:luc_${item.item}:` });
+    nameSpan.style.marginLeft = "8px";
+  }
+  onChooseItem(item, evt) {
+    const code = item.startsWith("luc_") ? item : `luc_${item}`;
+    this.onChoose(`:${code}: `);
+  }
+};
+async function openIconPickerForElement(app, target) {
+  if (typeof window !== "undefined" && window.IconSCAPIv0?.getIconFromUser) {
+    try {
+      const api = window.IconSCAPIv0;
+      const result = await api.getIconFromUser();
+      if (result) {
+        const rawId = typeof result === "string" ? result : result.id || result.name;
+        if (rawId) {
+          const formatted = rawId.startsWith(":") && rawId.endsWith(":") ? `${rawId} ` : `:${rawId}: `;
+          insertAtCursor(target, formatted);
+          return;
+        }
+      } else {
+        target.focus();
+        return;
+      }
+    } catch (err) {
+      console.debug("Error using IconSCAPIv0 picker:", err);
+    }
+  }
+  new FallbackIconPickerModal(app, (shortcode) => {
+    insertAtCursor(target, shortcode);
+  }).open();
 }
 
 // src/view/NotesheetCard.ts
@@ -869,7 +1017,7 @@ var NotesheetCard = class {
     const headerEl = this.cardEl.createDiv({ cls: "notesheet-card-header" });
     const headerLeft = headerEl.createDiv({ cls: "notesheet-card-header-left" });
     const dragHandle = headerLeft.createSpan({ cls: "notesheet-card-drag-handle" });
-    (0, import_obsidian5.setIcon)(dragHandle, "grip-vertical");
+    (0, import_obsidian6.setIcon)(dragHandle, "grip-vertical");
     dragHandle.title = "Drag to reorder card";
     const catPill = headerLeft.createSpan({
       cls: `notesheet-card-category-pill ${category ? "active" : ""}`
@@ -897,7 +1045,7 @@ var NotesheetCard = class {
     }
     if (this.item.sourceFile && this.settings.showSourceLinks) {
       const sourceBadge = headerLeft.createSpan({ cls: "notesheet-card-source-badge" });
-      (0, import_obsidian5.setIcon)(sourceBadge, "sync");
+      (0, import_obsidian6.setIcon)(sourceBadge, "sync");
       const filename = this.item.sourceFile.split("/").pop()?.replace(".md", "") || "note";
       sourceBadge.createSpan({ text: filename });
       sourceBadge.title = `Synced with: ${this.item.sourceFile} (Click to open note)`;
@@ -919,21 +1067,21 @@ var NotesheetCard = class {
       this.callbacks.onMovePage(this.item, targetPage);
     });
     const moveUpBtn = actionsEl.createEl("button", { cls: "notesheet-btn-icon" });
-    (0, import_obsidian5.setIcon)(moveUpBtn, "chevron-up");
+    (0, import_obsidian6.setIcon)(moveUpBtn, "chevron-up");
     moveUpBtn.title = "Move up";
     moveUpBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.callbacks.onMoveOrder(this.item, "up");
     });
     const moveDownBtn = actionsEl.createEl("button", { cls: "notesheet-btn-icon" });
-    (0, import_obsidian5.setIcon)(moveDownBtn, "chevron-down");
+    (0, import_obsidian6.setIcon)(moveDownBtn, "chevron-down");
     moveDownBtn.title = "Move down";
     moveDownBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.callbacks.onMoveOrder(this.item, "down");
     });
     const editBtn = actionsEl.createEl("button", { cls: "notesheet-btn-icon" });
-    (0, import_obsidian5.setIcon)(editBtn, "pencil");
+    (0, import_obsidian6.setIcon)(editBtn, "pencil");
     editBtn.title = "Edit content (two-way syncs to note)";
     editBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -941,7 +1089,7 @@ var NotesheetCard = class {
       this.renderEditMode();
     });
     const deleteBtn = actionsEl.createEl("button", { cls: "notesheet-btn-icon btn-danger" });
-    (0, import_obsidian5.setIcon)(deleteBtn, "trash-2");
+    (0, import_obsidian6.setIcon)(deleteBtn, "trash-2");
     deleteBtn.title = "Remove from notesheet";
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -953,7 +1101,7 @@ var NotesheetCard = class {
       displayTitle,
       this.settings.showCardTitles
     );
-    import_obsidian5.MarkdownRenderer.render(
+    import_obsidian6.MarkdownRenderer.render(
       this.app,
       contentToRender,
       bodyEl,
@@ -995,7 +1143,7 @@ var NotesheetCard = class {
     return content;
   }
   openCategoryMenu(event) {
-    const menu = new import_obsidian5.Menu();
+    const menu = new import_obsidian6.Menu();
     menu.addItem((item) => {
       item.setTitle("None (No Category)").setChecked(!this.item.categoryId).onClick(async () => {
         this.item.categoryId = void 0;
@@ -1031,6 +1179,16 @@ var NotesheetCard = class {
       value: this.item.title || ""
     });
     titleInput.placeholder = "Card Title (optional)";
+    const titleIconBtn = inputsRow.createEl("button", {
+      cls: "notesheet-btn-icon notesheet-icon-picker-btn",
+      attr: { "aria-label": "Insert icon shortcode (Cmd+I)", title: "Insert Icon (Cmd+I)" }
+    });
+    (0, import_obsidian6.setIcon)(titleIconBtn, "smile");
+    titleIconBtn.createSpan({ text: " Icon", cls: "notesheet-btn-label" });
+    titleIconBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openIconPickerForElement(this.app, titleInput);
+    });
     const catSelect = inputsRow.createEl("select", { cls: "notesheet-select" });
     const defaultOpt = catSelect.createEl("option", { text: "-- No Category --", value: "" });
     if (!this.item.categoryId) defaultOpt.selected = true;
@@ -1040,16 +1198,46 @@ var NotesheetCard = class {
     }
     if (this.item.sourceFile && this.item.blockId) {
       const syncInfo = editWrapper.createDiv({ cls: "notesheet-sync-notice" });
-      (0, import_obsidian5.setIcon)(syncInfo, "refresh-cw");
+      (0, import_obsidian6.setIcon)(syncInfo, "refresh-cw");
       syncInfo.createSpan({
         text: ` Live-linked to "${this.item.sourceFile}". Changes will update the note.`
       });
     }
+    const textareaToolbar = editWrapper.createDiv({ cls: "notesheet-card-textarea-toolbar" });
+    const textareaIconBtn = textareaToolbar.createEl("button", {
+      cls: "notesheet-btn-icon notesheet-icon-picker-btn",
+      attr: { "aria-label": "Insert icon shortcode (Cmd+I)", title: "Insert Icon (Cmd+I)" }
+    });
+    (0, import_obsidian6.setIcon)(textareaIconBtn, "sparkles");
+    textareaIconBtn.createSpan({ text: " Insert Icon", cls: "notesheet-btn-label" });
+    textareaIconBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openIconPickerForElement(this.app, textarea);
+    });
+    const shortcutHint = textareaToolbar.createSpan({ cls: "notesheet-toolbar-hint" });
+    shortcutHint.setText("Shortcut: \u2318I / Ctrl+I (or type ::)");
     const textarea = editWrapper.createEl("textarea", {
       cls: "notesheet-card-textarea"
     });
     textarea.value = this.item.content;
     textarea.rows = Math.min(15, Math.max(3, this.item.content.split("\n").length + 1));
+    const handleKeydown = (e, el) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "i" || e.key === "I")) {
+        e.preventDefault();
+        openIconPickerForElement(this.app, el);
+      }
+    };
+    const handleInput = (e, el) => {
+      const cursor = el.selectionStart ?? el.value.length;
+      const textBefore = el.value.substring(0, cursor);
+      if (textBefore.endsWith("::")) {
+        openIconPickerForElement(this.app, el);
+      }
+    };
+    titleInput.addEventListener("keydown", (e) => handleKeydown(e, titleInput));
+    titleInput.addEventListener("input", (e) => handleInput(e, titleInput));
+    textarea.addEventListener("keydown", (e) => handleKeydown(e, textarea));
+    textarea.addEventListener("input", (e) => handleInput(e, textarea));
     const btnRow = editWrapper.createDiv({ cls: "notesheet-card-edit-buttons" });
     const cancelBtn = btnRow.createEl("button", { text: "Cancel" });
     cancelBtn.addEventListener("click", () => {
@@ -1071,7 +1259,7 @@ var NotesheetCard = class {
         saveBtn.setAttribute("disabled", "true");
         const ok = await this.syncManager.syncCardToSourceNote(this.item, newContent);
         if (ok) {
-          new import_obsidian5.Notice(`Notesheet: Updated source note "${this.item.sourceFile}"`);
+          new import_obsidian6.Notice(`Notesheet: Updated source note "${this.item.sourceFile}"`);
         }
       }
       await this.callbacks.onUpdate(this.item);
@@ -1092,14 +1280,14 @@ var NotesheetCard = class {
   async openSourceNote() {
     if (!this.item.sourceFile) return;
     const file = this.app.vault.getAbstractFileByPath(this.item.sourceFile);
-    if (file instanceof import_obsidian5.TFile) {
+    if (file instanceof import_obsidian6.TFile) {
       const leaf = this.app.workspace.getLeaf(false);
       await leaf.openFile(file);
       if (this.item.blockId) {
-        new import_obsidian5.Notice(`Opened "${file.basename}" (^${this.item.blockId})`);
+        new import_obsidian6.Notice(`Opened "${file.basename}" (^${this.item.blockId})`);
       }
     } else {
-      new import_obsidian5.Notice(`Could not find "${this.item.sourceFile}".`);
+      new import_obsidian6.Notice(`Could not find "${this.item.sourceFile}".`);
     }
   }
   updateContent(content) {
@@ -1111,8 +1299,8 @@ var NotesheetCard = class {
 };
 
 // src/view/BlockPickerModal.ts
-var import_obsidian6 = require("obsidian");
-var BlockPickerModal = class extends import_obsidian6.Modal {
+var import_obsidian7 = require("obsidian");
+var BlockPickerModal = class extends import_obsidian7.Modal {
   constructor(app, blockManager, defaultTargetPageId, onSelectBlock) {
     super(app);
     this.files = [];
@@ -1127,7 +1315,7 @@ var BlockPickerModal = class extends import_obsidian6.Modal {
     contentEl.empty();
     contentEl.addClass("notesheet-picker-modal");
     contentEl.createEl("h2", { text: "Import Block from Vault Note" });
-    new import_obsidian6.Setting(contentEl).setName("Target Page").setDesc("Select which page of the notesheet to place this block").addDropdown((dd) => {
+    new import_obsidian7.Setting(contentEl).setName("Target Page").setDesc("Select which page of the notesheet to place this block").addDropdown((dd) => {
       dd.addOption("front", "Page 1 (Front)");
       dd.addOption("back", "Page 2 (Back)");
       dd.setValue(this.targetPageId);
@@ -1136,7 +1324,7 @@ var BlockPickerModal = class extends import_obsidian6.Modal {
       });
     });
     this.files = this.app.vault.getMarkdownFiles().filter((f) => !f.name.endsWith(".notesheet.md"));
-    const fileSetting = new import_obsidian6.Setting(contentEl).setName("Select Source Note").setDesc("Pick a note to extract formulas, definitions, or blocks from");
+    const fileSetting = new import_obsidian7.Setting(contentEl).setName("Select Source Note").setDesc("Pick a note to extract formulas, definitions, or blocks from");
     const selectEl = fileSetting.controlEl.createEl("select", { cls: "dropdown" });
     selectEl.createEl("option", { text: "-- Choose a note --", value: "" });
     for (const file of this.files) {
@@ -1150,7 +1338,7 @@ var BlockPickerModal = class extends import_obsidian6.Modal {
         return;
       }
       const file = this.app.vault.getAbstractFileByPath(selectedPath);
-      if (file instanceof import_obsidian6.TFile) {
+      if (file instanceof import_obsidian7.TFile) {
         this.selectedFile = file;
         await this.loadBlocksForFile(file, blocksContainer);
       }
@@ -1231,7 +1419,7 @@ var BlockPickerModal = class extends import_obsidian6.Modal {
           const fileText = await this.app.vault.read(this.selectedFile);
           const updated = this.blockManager.updateBlockInContent(fileText, blockId, blk.content);
           await this.app.vault.modify(this.selectedFile, updated);
-          new import_obsidian6.Notice(`Added anchor ^${blockId} to "${this.selectedFile.basename}"`);
+          new import_obsidian7.Notice(`Added anchor ^${blockId} to "${this.selectedFile.basename}"`);
         }
         const newItem = {
           id: "item-" + Date.now() + "-" + Math.random().toString(36).substr(2, 4),
@@ -1244,7 +1432,7 @@ var BlockPickerModal = class extends import_obsidian6.Modal {
           updatedAt: Date.now()
         };
         this.onSelectBlock(newItem, this.targetPageId);
-        new import_obsidian6.Notice(`Added "${blk.title}" to ${this.targetPageId === "front" ? "Page 1 (Front)" : "Page 2 (Back)"}`);
+        new import_obsidian7.Notice(`Added "${blk.title}" to ${this.targetPageId === "front" ? "Page 1 (Front)" : "Page 2 (Back)"}`);
         this.close();
       });
     }
@@ -1256,7 +1444,7 @@ var BlockPickerModal = class extends import_obsidian6.Modal {
 };
 
 // src/view/CategoryManagerModal.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var COLOR_PRESETS = [
   { name: "Blue", color: "#2563eb" },
   { name: "Green", color: "#16a34a" },
@@ -1269,7 +1457,7 @@ var COLOR_PRESETS = [
   { name: "Orange", color: "#ea580c" },
   { name: "Gray", color: "#4b5563" }
 ];
-var CategoryManagerModal = class extends import_obsidian7.Modal {
+var CategoryManagerModal = class extends import_obsidian8.Modal {
   constructor(app, data, onSave) {
     super(app);
     this.data = data;
@@ -1360,7 +1548,7 @@ var CategoryManagerModal = class extends import_obsidian7.Modal {
     const handleAdd = async () => {
       const name = newNameInput.value.trim();
       if (!name) {
-        new import_obsidian7.Notice("Please enter a category name.");
+        new import_obsidian8.Notice("Please enter a category name.");
         return;
       }
       const newCat = {
@@ -1384,7 +1572,7 @@ var CategoryManagerModal = class extends import_obsidian7.Modal {
 
 // src/view/NotesheetView.ts
 var NOTESHEET_VIEW_TYPE = "notesheet-view";
-var NotesheetView = class extends import_obsidian8.ItemView {
+var NotesheetView = class extends import_obsidian9.ItemView {
   constructor(leaf, store, syncManager, blockManager) {
     super(leaf);
     this.currentFile = null;
@@ -1478,9 +1666,9 @@ var NotesheetView = class extends import_obsidian8.ItemView {
         const changed = await this.syncManager.refreshNotesheetFromSources(this.data);
         if (changed) {
           await this.saveData();
-          new import_obsidian8.Notice("Notesheet: Refreshed all cards from source notes.");
+          new import_obsidian9.Notice("Notesheet: Refreshed all cards from source notes.");
         } else {
-          new import_obsidian8.Notice("Notesheet: All cards are up to date.");
+          new import_obsidian9.Notice("Notesheet: All cards are up to date.");
         }
         await this.render();
       },
@@ -1529,7 +1717,7 @@ var NotesheetView = class extends import_obsidian8.ItemView {
     if (page.items.length === 0) {
       const emptyNotice = columnsGrid.createDiv({ cls: "notesheet-empty-state" });
       const icon = emptyNotice.createSpan();
-      (0, import_obsidian8.setIcon)(icon, "sparkles");
+      (0, import_obsidian9.setIcon)(icon, "sparkles");
       emptyNotice.createEl("h3", { text: `No cards on ${page.name} yet` });
       emptyNotice.createEl("p", {
         text: 'Right-click any note selection and choose "Add to Notesheet", or click "+ Add Card" above.'
@@ -1624,7 +1812,7 @@ var NotesheetView = class extends import_obsidian8.ItemView {
               page.items = page.items.filter((it) => it.id !== deletedItem.id);
               await this.saveData();
               await this.render();
-              new import_obsidian8.Notice(`Removed "${deletedItem.title || "Card"}" from notesheet.`);
+              new import_obsidian9.Notice(`Removed "${deletedItem.title || "Card"}" from notesheet.`);
             },
             onMovePage: async (movedItem, targetPageId) => {
               page.items = page.items.filter((it) => it.id !== movedItem.id);
@@ -1636,7 +1824,7 @@ var NotesheetView = class extends import_obsidian8.ItemView {
               targetPage.items.push(movedItem);
               await this.saveData();
               await this.render();
-              new import_obsidian8.Notice(`Moved to ${targetPage.name}`);
+              new import_obsidian9.Notice(`Moved to ${targetPage.name}`);
             },
             onMoveOrder: async (movedItem, direction) => {
               const idx = page.items.findIndex((it) => it.id === movedItem.id);
@@ -1704,7 +1892,7 @@ var NotesheetView = class extends import_obsidian8.ItemView {
     const previousTab = this.activeTab;
     this.activeTab = "both";
     this.render();
-    new import_obsidian8.Notice("Notesheet: Preparing print layout...");
+    new import_obsidian9.Notice("Notesheet: Preparing print layout...");
     setTimeout(() => {
       window.print();
       this.activeTab = previousTab;
@@ -1714,8 +1902,8 @@ var NotesheetView = class extends import_obsidian8.ItemView {
 };
 
 // src/settings/SettingsTab.ts
-var import_obsidian9 = require("obsidian");
-var NotesheetSettingTab = class extends import_obsidian9.PluginSettingTab {
+var import_obsidian10 = require("obsidian");
+var NotesheetSettingTab = class extends import_obsidian10.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -1724,7 +1912,7 @@ var NotesheetSettingTab = class extends import_obsidian9.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "Notesheet Plugin Settings" });
-    new import_obsidian9.Setting(containerEl).setName("Active / Default Notesheet").setDesc("When adding blocks from notes via commands or context menu, add to this notesheet").addDropdown((dropdown) => {
+    new import_obsidian10.Setting(containerEl).setName("Active / Default Notesheet").setDesc("When adding blocks from notes via commands or context menu, add to this notesheet").addDropdown((dropdown) => {
       const sheets = this.plugin.store.getAllNotesheets();
       dropdown.addOption("", "-- Select active notesheet --");
       for (const sheet of sheets) {
@@ -1736,7 +1924,7 @@ var NotesheetSettingTab = class extends import_obsidian9.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian9.Setting(containerEl).setName("Default Columns").setDesc("Number of columns for new notesheets (2 or 3 is standard for exam cheat sheets)").addDropdown((dd) => {
+    new import_obsidian10.Setting(containerEl).setName("Default Columns").setDesc("Number of columns for new notesheets (2 or 3 is standard for exam cheat sheets)").addDropdown((dd) => {
       dd.addOption("1", "1 Column");
       dd.addOption("2", "2 Columns");
       dd.addOption("3", "3 Columns");
@@ -1747,13 +1935,13 @@ var NotesheetSettingTab = class extends import_obsidian9.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian9.Setting(containerEl).setName("Default Font Size").setDesc("Base font size for notesheet cards in points (pt)").addSlider((slider) => {
+    new import_obsidian10.Setting(containerEl).setName("Default Font Size").setDesc("Base font size for notesheet cards in points (pt)").addSlider((slider) => {
       slider.setLimits(6, 12, 0.5).setValue(this.plugin.settings.defaultFontSize).setDynamicTooltip().onChange(async (val) => {
         this.plugin.settings.defaultFontSize = val;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian9.Setting(containerEl).setName("Default Paper Size").setDesc("Standard paper dimension for print & PDF layout").addDropdown((dd) => {
+    new import_obsidian10.Setting(containerEl).setName("Default Paper Size").setDesc("Standard paper dimension for print & PDF layout").addDropdown((dd) => {
       dd.addOption("letter", 'US Letter (8.5" x 11")');
       dd.addOption("a4", "A4 (210 x 297 mm)");
       dd.setValue(this.plugin.settings.defaultPageSize);
@@ -1762,7 +1950,7 @@ var NotesheetSettingTab = class extends import_obsidian9.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian9.Setting(containerEl).setName("Default Margins").setDesc("Margins for notesheet pages").addDropdown((dd) => {
+    new import_obsidian10.Setting(containerEl).setName("Default Margins").setDesc("Margins for notesheet pages").addDropdown((dd) => {
       dd.addOption("tight", "Tight (0.2in / 5mm)");
       dd.addOption("compact", "Compact (0.3in / 7.5mm)");
       dd.addOption("normal", "Normal (0.5in / 12.7mm)");
@@ -1772,7 +1960,7 @@ var NotesheetSettingTab = class extends import_obsidian9.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian9.Setting(containerEl).setName("Notesheet Folder").setDesc("Folder in vault to store newly created notesheet files (leave empty for vault root)").addText((text) => {
+    new import_obsidian10.Setting(containerEl).setName("Notesheet Folder").setDesc("Folder in vault to store newly created notesheet files (leave empty for vault root)").addText((text) => {
       text.setPlaceholder("e.g. Exams or Notesheets").setValue(this.plugin.settings.defaultFolder).onChange(async (val) => {
         this.plugin.settings.defaultFolder = val.trim();
         await this.plugin.saveSettings();
@@ -1782,7 +1970,7 @@ var NotesheetSettingTab = class extends import_obsidian9.PluginSettingTab {
 };
 
 // src/main.ts
-var NotesheetPlugin = class extends import_obsidian10.Plugin {
+var NotesheetPlugin = class extends import_obsidian11.Plugin {
   async onload() {
     console.log("Loading Notesheet plugin...");
     await this.loadSettings();
@@ -1799,7 +1987,7 @@ var NotesheetPlugin = class extends import_obsidian10.Plugin {
     }
     this.registerEvent(
       this.app.vault.on("modify", (file) => {
-        if (file instanceof import_obsidian10.TFile) {
+        if (file instanceof import_obsidian11.TFile) {
           this.syncManager.onFileModified(file);
         }
       })
@@ -1826,7 +2014,7 @@ var NotesheetPlugin = class extends import_obsidian10.Plugin {
     );
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
-        if (file instanceof import_obsidian10.TFile && this.store.isNotesheetFile(file)) {
+        if (file instanceof import_obsidian11.TFile && this.store.isNotesheetFile(file)) {
           menu.addItem((item) => {
             item.setTitle("Open in Notesheet View").setIcon("file-spreadsheet").onClick(async () => {
               await this.openNotesheetFile(file);
@@ -1881,7 +2069,7 @@ var NotesheetPlugin = class extends import_obsidian10.Plugin {
   async handleAddToNotesheet(editor, view, targetPageId) {
     const file = view.file;
     if (!file) {
-      new import_obsidian10.Notice("No active note to add from.");
+      new import_obsidian11.Notice("No active note to add from.");
       return;
     }
     const extraction = this.blockManager.extractOrAttachBlockId(editor, file);
@@ -1916,7 +2104,7 @@ var NotesheetPlugin = class extends import_obsidian10.Plugin {
         await v.setFile(sheetFile);
       }
     }
-    new import_obsidian10.Notice(
+    new import_obsidian11.Notice(
       `Notesheet: Added "${newItem.title}" to ${targetPageId === "front" ? "Page 1 (Front)" : "Page 2 (Back)"} of "${sheetFile.basename}".`
     );
   }
@@ -1952,7 +2140,7 @@ var NotesheetPlugin = class extends import_obsidian10.Plugin {
   async resolveTargetNotesheetFile() {
     if (this.settings.activeNotesheetPath) {
       const activeFile = this.app.vault.getAbstractFileByPath(this.settings.activeNotesheetPath);
-      if (activeFile instanceof import_obsidian10.TFile) {
+      if (activeFile instanceof import_obsidian11.TFile) {
         return activeFile;
       }
     }
@@ -1981,13 +2169,13 @@ var NotesheetPlugin = class extends import_obsidian10.Plugin {
         this.settings.activeNotesheetPath = file.path;
         await this.saveSettings();
         await this.openNotesheetFile(file);
-        new import_obsidian10.Notice(`Created exam notesheet: "${file.basename}"`);
+        new import_obsidian11.Notice(`Created exam notesheet: "${file.basename}"`);
         resolve(file);
       }).open();
     });
   }
 };
-var SelectNotesheetModal = class extends import_obsidian10.Modal {
+var SelectNotesheetModal = class extends import_obsidian11.Modal {
   constructor(app, files, onSelect) {
     super(app);
     this.selected = false;
@@ -2016,7 +2204,7 @@ var SelectNotesheetModal = class extends import_obsidian10.Modal {
     }
   }
 };
-var CreateNotesheetModal = class extends import_obsidian10.Modal {
+var CreateNotesheetModal = class extends import_obsidian11.Modal {
   constructor(app, defaultFolder, onSubmit) {
     super(app);
     this.folder = defaultFolder;
@@ -2027,19 +2215,19 @@ var CreateNotesheetModal = class extends import_obsidian10.Modal {
     contentEl.empty();
     contentEl.createEl("h3", { text: "Create Exam Notesheet" });
     let title = "Final Exam Cheat Sheet";
-    new import_obsidian10.Setting(contentEl).setName("Notesheet Title").setDesc("e.g. Physics 240 Midterm, Calculus II Exam").addText((text) => {
+    new import_obsidian11.Setting(contentEl).setName("Notesheet Title").setDesc("e.g. Physics 240 Midterm, Calculus II Exam").addText((text) => {
       text.setValue(title);
       text.onChange((val) => {
         title = val.trim();
       });
     });
-    new import_obsidian10.Setting(contentEl).setName("Save Folder").setDesc("Folder in vault to store this notesheet").addText((text) => {
+    new import_obsidian11.Setting(contentEl).setName("Save Folder").setDesc("Folder in vault to store this notesheet").addText((text) => {
       text.setValue(this.folder);
       text.onChange((val) => {
         this.folder = val.trim();
       });
     });
-    new import_obsidian10.Setting(contentEl).addButton((btn) => {
+    new import_obsidian11.Setting(contentEl).addButton((btn) => {
       btn.setButtonText("Create Notesheet").setCta().onClick(() => {
         if (!title) title = "Exam Notesheet";
         this.onSubmit(title, this.folder);

@@ -73,12 +73,34 @@ export function renderTextWithIcons(container: HTMLElement, text: string): void 
     if (!rendered && typeof window !== 'undefined' && (window as any).IconSCAPIv0) {
       const api = (window as any).IconSCAPIv0;
       try {
-        if (api.hasIcon && api.hasIcon(shortcode)) {
-          if (api.getSVGIcon) {
-            api.getSVGIcon(shortcode).then((svgEl: any) => {
+        const idToTry = api.hasIcon && api.hasIcon(shortcode)
+          ? shortcode
+          : api.hasIcon && api.hasIcon(lucideName)
+            ? lucideName
+            : null;
+
+        if (idToTry) {
+          if (api.getIcon) {
+            const syncRes = api.getIcon(idToTry);
+            if (typeof syncRes === 'string') {
+              iconSpan.setText(syncRes);
+              rendered = true;
+            } else if (syncRes instanceof Node) {
+              iconSpan.empty();
+              iconSpan.appendChild(syncRes);
+              rendered = true;
+            }
+          }
+
+          if (!rendered && api.getSVGIcon) {
+            api.getSVGIcon(idToTry).then((svgEl: any) => {
               if (svgEl) {
                 iconSpan.empty();
-                iconSpan.appendChild(svgEl);
+                if (typeof svgEl === 'string') {
+                  iconSpan.setText(svgEl);
+                } else if (svgEl instanceof Node) {
+                  iconSpan.appendChild(svgEl);
+                }
               }
             });
             rendered = true;
@@ -112,4 +134,3 @@ export function renderTextWithIcons(container: HTMLElement, text: string): void 
     container.appendText(text.substring(lastIndex));
   }
 }
-

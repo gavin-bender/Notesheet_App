@@ -1,6 +1,7 @@
 import { BlockManager } from '../src/sync/BlockManager';
 import { NotesheetStore } from '../src/storage/NotesheetStore';
 import { createDefaultNotesheetData } from '../src/types';
+import { insertAtCursor } from '../src/view/IconPickerHelper';
 
 let passed = 0;
 let failed = 0;
@@ -180,6 +181,44 @@ assert(checkAdjacency(gridTest, 1, 0).hideCategoryBanner === true, 'Col 1, Row 0
 
 // Col 1, Row 1: Formulas, left is Theorems, above is Theorems -> must show title
 assert(checkAdjacency(gridTest, 1, 1).hideCategoryBanner === false, 'Col 1, Row 1 shows title (different category from neighbors)');
+
+// Test 8: Icon Picker Insertion & Replacement
+console.log('\nTest Suite 8: Icon Picker Insertion & Replacement');
+const mockInput = {
+  value: 'Card Title: :luc',
+  selectionStart: 16,
+  selectionEnd: 16,
+  setSelectionRange(s, e) { this.selectionStart = s; this.selectionEnd = e; },
+  dispatchEvent() {},
+  focus() {}
+};
+
+insertAtCursor(mockInput, ':luc_layers: ');
+assert(mockInput.value === 'Card Title: :luc_layers: ', 'Replaces partial :luc without duplicate colon');
+
+const mockInput2 = {
+  value: 'Card Title ::',
+  selectionStart: 13,
+  selectionEnd: 13,
+  setSelectionRange(s, e) { this.selectionStart = s; this.selectionEnd = e; },
+  dispatchEvent() {},
+  focus() {}
+};
+
+insertAtCursor(mockInput2, ':luc_mouse_pointer: ');
+assert(mockInput2.value === 'Card Title :luc_mouse_pointer: ', 'Replaces :: cleanly with selected icon');
+
+const mockInput3 = {
+  value: 'Normal Card Title ',
+  selectionStart: 18,
+  selectionEnd: 18,
+  setSelectionRange(s, e) { this.selectionStart = s; this.selectionEnd = e; },
+  dispatchEvent() {},
+  focus() {}
+};
+
+insertAtCursor(mockInput3, ':luc_code: ');
+assert(mockInput3.value === 'Normal Card Title :luc_code: ', 'Appends icon at cursor when no colon prefix');
 
 console.log(`\n========================================`);
 console.log(`TEST SUMMARY: ${passed} passed, ${failed} failed.`);

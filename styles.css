@@ -684,6 +684,69 @@
   height: 11px;
 }
 
+.notesheet-card-textarea-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+  margin-top: 2px;
+}
+
+.notesheet-icon-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  padding: 2px 7px;
+  height: 22px;
+  border-radius: 3px;
+  background: var(--background-modifier-form-field);
+  border: 1px solid var(--notesheet-border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.notesheet-icon-picker-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--interactive-accent);
+}
+
+.notesheet-icon-picker-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.notesheet-toolbar-hint {
+  font-size: 9.5px;
+  color: var(--text-faint);
+  font-style: italic;
+  user-select: none;
+}
+
+.notesheet-icon-suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.notesheet-icon-preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+}
+
+.notesheet-icon-preview svg {
+  width: 16px;
+  height: 16px;
+}
+
 .notesheet-card-textarea {
   width: 100%;
   font-family: var(--font-monospace);

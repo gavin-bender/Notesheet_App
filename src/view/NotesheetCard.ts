@@ -2,6 +2,7 @@ import { App, Component, MarkdownRenderer, Notice, TFile, setIcon, Menu } from '
 import { NotesheetItem, NotesheetSettings, NotesheetCategory } from '../types';
 import { SyncManager } from '../sync/SyncManager';
 import { renderTextWithIcons } from './IconRenderer';
+import { openIconPickerForElement } from './IconPickerHelper';
 
 export interface CardActionCallbacks {
   onUpdate: (item: NotesheetItem) => Promise<void>;
@@ -327,6 +328,18 @@ export class NotesheetCard {
     });
     titleInput.placeholder = 'Card Title (optional)';
 
+    // Icon button for Title
+    const titleIconBtn = inputsRow.createEl('button', {
+      cls: 'notesheet-btn-icon notesheet-icon-picker-btn',
+      attr: { 'aria-label': 'Insert icon shortcode (Cmd+I)', title: 'Insert Icon (Cmd+I)' }
+    });
+    setIcon(titleIconBtn, 'smile');
+    titleIconBtn.createSpan({ text: ' Icon', cls: 'notesheet-btn-label' });
+    titleIconBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openIconPickerForElement(this.app, titleInput);
+    });
+
     // Category dropdown
     const catSelect = inputsRow.createEl('select', { cls: 'notesheet-select' });
     const defaultOpt = catSelect.createEl('option', { text: '-- No Category --', value: '' });
@@ -346,12 +359,50 @@ export class NotesheetCard {
       });
     }
 
+    // Textarea toolbar with icon button and shortcut hint
+    const textareaToolbar = editWrapper.createDiv({ cls: 'notesheet-card-textarea-toolbar' });
+
+    const textareaIconBtn = textareaToolbar.createEl('button', {
+      cls: 'notesheet-btn-icon notesheet-icon-picker-btn',
+      attr: { 'aria-label': 'Insert icon shortcode (Cmd+I)', title: 'Insert Icon (Cmd+I)' }
+    });
+    setIcon(textareaIconBtn, 'sparkles');
+    textareaIconBtn.createSpan({ text: ' Insert Icon', cls: 'notesheet-btn-label' });
+    textareaIconBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openIconPickerForElement(this.app, textarea);
+    });
+
+    const shortcutHint = textareaToolbar.createSpan({ cls: 'notesheet-toolbar-hint' });
+    shortcutHint.setText('Shortcut: ⌘I / Ctrl+I (or type ::)');
+
     // Markdown Textarea
     const textarea = editWrapper.createEl('textarea', {
       cls: 'notesheet-card-textarea'
     });
     textarea.value = this.item.content;
     textarea.rows = Math.min(15, Math.max(3, this.item.content.split('\n').length + 1));
+
+    // Hotkey & inline :: triggers for titleInput and textarea
+    const handleKeydown = (e: KeyboardEvent, el: HTMLInputElement | HTMLTextAreaElement) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        openIconPickerForElement(this.app, el);
+      }
+    };
+
+    const handleInput = (e: Event, el: HTMLInputElement | HTMLTextAreaElement) => {
+      const cursor = el.selectionStart ?? el.value.length;
+      const textBefore = el.value.substring(0, cursor);
+      if (textBefore.endsWith('::')) {
+        openIconPickerForElement(this.app, el);
+      }
+    };
+
+    titleInput.addEventListener('keydown', (e) => handleKeydown(e, titleInput));
+    titleInput.addEventListener('input', (e) => handleInput(e, titleInput));
+    textarea.addEventListener('keydown', (e) => handleKeydown(e, textarea));
+    textarea.addEventListener('input', (e) => handleInput(e, textarea));
 
     // Save and Cancel button bar
     const btnRow = editWrapper.createDiv({ cls: 'notesheet-card-edit-buttons' });
