@@ -55,9 +55,14 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   async onload() {
     super.onload();
     this.syncManager.registerSubscriber(this);
+    window.addEventListener('beforeprint', this.handleBeforePrint);
+    window.addEventListener('afterprint', this.handleAfterPrint);
   }
 
   async onunload() {
+    window.removeEventListener('beforeprint', this.handleBeforePrint);
+    window.removeEventListener('afterprint', this.handleAfterPrint);
+    this.cleanPrintContainer();
     this.syncManager.unregisterSubscriber(this);
     super.onunload();
   }
@@ -448,10 +453,52 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     await this.render();
   }
 
+  private handleBeforePrint = () => {
+    if (this.containerEl && document.body.contains(this.containerEl) && this.containerEl.offsetWidth > 0) {
+      this.setupPrintContainer();
+    }
+  };
+
+  private handleAfterPrint = () => {
+    this.cleanPrintContainer();
+  };
+
+  public setupPrintContainer(): HTMLElement {
+    this.cleanPrintContainer();
+    const printContainer = document.body.createDiv({ cls: 'print notesheet-print-container' });
+    printContainer.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
+    printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
+
+    const pageEls = this.contentEl.querySelectorAll<HTMLElement>('.notesheet-page-sheet');
+    pageEls.forEach((pageEl) => {
+      const clone = pageEl.cloneNode(true) as HTMLElement;
+      clone.classList.remove('tab-hidden');
+      printContainer.appendChild(clone);
+    });
+
+    return printContainer;
+  }
+
+  public cleanPrintContainer(): void {
+    document.querySelectorAll('.notesheet-print-container').forEach((el) => el.remove());
+  }
+
   public printNotesheet(): void {
-    new Notice('Notesheet: Opening Print / PDF dialog...');
+    new Notice('Notesheet: Preparing 2-page print & PDF export...');
+    this.setupPrintContainer();
+
     setTimeout(() => {
+      let cleaned = false;
+      const doCleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        this.cleanPrintContainer();
+        window.removeEventListener('afterprint', doCleanup);
+      };
+
+      window.addEventListener('afterprint', doCleanup, { once: true });
       window.print();
-    }, 80);
+      setTimeout(doCleanup, 5000);
+    }, 150);
   }
 }

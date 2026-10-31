@@ -1701,6 +1701,14 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     this.activeTab = "front";
     this.cardComponents = /* @__PURE__ */ new Map();
     this.initialEditCardId = null;
+    this.handleBeforePrint = () => {
+      if (this.containerEl && document.body.contains(this.containerEl) && this.containerEl.offsetWidth > 0) {
+        this.setupPrintContainer();
+      }
+    };
+    this.handleAfterPrint = () => {
+      this.cleanPrintContainer();
+    };
     this.store = store;
     this.syncManager = syncManager;
     this.blockManager = blockManager;
@@ -1724,8 +1732,13 @@ var NotesheetView = class extends import_obsidian10.ItemView {
   async onload() {
     super.onload();
     this.syncManager.registerSubscriber(this);
+    window.addEventListener("beforeprint", this.handleBeforePrint);
+    window.addEventListener("afterprint", this.handleAfterPrint);
   }
   async onunload() {
+    window.removeEventListener("beforeprint", this.handleBeforePrint);
+    window.removeEventListener("afterprint", this.handleAfterPrint);
+    this.cleanPrintContainer();
     this.syncManager.unregisterSubscriber(this);
     super.onunload();
   }
@@ -2042,11 +2055,37 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     await this.saveData();
     await this.render();
   }
+  setupPrintContainer() {
+    this.cleanPrintContainer();
+    const printContainer = document.body.createDiv({ cls: "print notesheet-print-container" });
+    printContainer.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
+    printContainer.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
+    const pageEls = this.contentEl.querySelectorAll(".notesheet-page-sheet");
+    pageEls.forEach((pageEl) => {
+      const clone = pageEl.cloneNode(true);
+      clone.classList.remove("tab-hidden");
+      printContainer.appendChild(clone);
+    });
+    return printContainer;
+  }
+  cleanPrintContainer() {
+    document.querySelectorAll(".notesheet-print-container").forEach((el) => el.remove());
+  }
   printNotesheet() {
-    new import_obsidian10.Notice("Notesheet: Opening Print / PDF dialog...");
+    new import_obsidian10.Notice("Notesheet: Preparing 2-page print & PDF export...");
+    this.setupPrintContainer();
     setTimeout(() => {
+      let cleaned = false;
+      const doCleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        this.cleanPrintContainer();
+        window.removeEventListener("afterprint", doCleanup);
+      };
+      window.addEventListener("afterprint", doCleanup, { once: true });
       window.print();
-    }, 80);
+      setTimeout(doCleanup, 5e3);
+    }, 150);
   }
 };
 
@@ -2198,6 +2237,20 @@ var NotesheetPlugin = class extends import_obsidian12.Plugin {
       name: "Add selected block to Notesheet (Back / Page 2)",
       editorCallback: async (editor, view) => {
         await this.handleAddToNotesheet(editor, view, "back");
+      }
+    });
+    this.addCommand({
+      id: "print-notesheet",
+      name: "Print / Export to PDF (2 Pages)",
+      checkCallback: (checking) => {
+        const leaf = this.app.workspace.getActiveViewOfType(NotesheetView);
+        if (leaf) {
+          if (!checking) {
+            leaf.printNotesheet();
+          }
+          return true;
+        }
+        return false;
       }
     });
     this.addSettingTab(new NotesheetSettingTab(this.app, this));

@@ -128,6 +128,21 @@ export default class NotesheetPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: 'print-notesheet',
+      name: 'Print / Export to PDF (2 Pages)',
+      checkCallback: (checking: boolean) => {
+        const leaf = this.app.workspace.getActiveViewOfType(NotesheetView);
+        if (leaf) {
+          if (!checking) {
+            leaf.printNotesheet();
+          }
+          return true;
+        }
+        return false;
+      }
+    });
+
     // Settings tab
     this.addSettingTab(new NotesheetSettingTab(this.app, this));
   }
