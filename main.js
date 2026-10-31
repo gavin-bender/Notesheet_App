@@ -1771,7 +1771,7 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     const toolbar = new NotesheetToolbar(this.app, this.data, this.activeTab, {
       onTabChange: (tab) => {
         this.activeTab = tab;
-        this.renderPages(pagesWrapper);
+        this.updatePageTabVisibility(pagesWrapper);
       },
       onSettingChange: async () => {
         container.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
@@ -1819,12 +1819,28 @@ var NotesheetView = class extends import_obsidian10.ItemView {
   renderPages(container) {
     container.empty();
     this.cardComponents.clear();
-    const pagesToRender = this.data.pages.filter((page) => {
-      if (this.activeTab === "both") return true;
-      return page.id === this.activeTab;
-    });
-    for (const page of pagesToRender) {
+    for (const page of this.data.pages) {
       this.renderSinglePage(container, page);
+    }
+    this.updatePageTabVisibility(container);
+  }
+  updatePageTabVisibility(container) {
+    const root = container || this.contentEl;
+    const pageFront = root.querySelector("#notesheet-page-front");
+    const pageBack = root.querySelector("#notesheet-page-back");
+    if (pageFront) {
+      if (this.activeTab === "back") {
+        pageFront.classList.add("tab-hidden");
+      } else {
+        pageFront.classList.remove("tab-hidden");
+      }
+    }
+    if (pageBack) {
+      if (this.activeTab === "front") {
+        pageBack.classList.add("tab-hidden");
+      } else {
+        pageBack.classList.remove("tab-hidden");
+      }
     }
   }
   renderSinglePage(container, page) {
@@ -2027,15 +2043,10 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     await this.render();
   }
   printNotesheet() {
-    const previousTab = this.activeTab;
-    this.activeTab = "both";
-    this.render();
-    new import_obsidian10.Notice("Notesheet: Preparing print layout...");
+    new import_obsidian10.Notice("Notesheet: Opening Print / PDF dialog...");
     setTimeout(() => {
       window.print();
-      this.activeTab = previousTab;
-      this.render();
-    }, 300);
+    }, 80);
   }
 };
 

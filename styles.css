@@ -1045,6 +1045,11 @@
   overflow-y: auto;
 }
 
+/* Screen Tab Visibility */
+.notesheet-page-sheet.tab-hidden {
+  display: none !important;
+}
+
 /* ========================================================
    EXAM PRINTING RULES (@media print)
    ======================================================== */
@@ -1055,10 +1060,13 @@
     margin: 0.25in;
   }
 
-  /* Hide Obsidian Chrome */
+  /* Hide Obsidian Chrome & Sidebars (DO NOT hide workspace-split mod-root!) */
   .workspace-ribbon,
   .workspace-tab-header-container,
-  .workspace-split,
+  .workspace-split.mod-left-split,
+  .workspace-split.mod-right-split,
+  .workspace-drawer,
+  .workspace-leaf-resize-handle,
   .titlebar,
   .status-bar,
   .notesheet-toolbar,
@@ -1067,15 +1075,41 @@
   .notesheet-empty-state,
   .notesheet-card-source-badge,
   .notesheet-card-category-pill,
-  .drag-target-active {
+  .drag-target-active,
+  .modal-container,
+  .notice-container {
     display: none !important;
   }
 
-  html, body {
+  /* Reset layout containers so they never clip or prevent printing */
+  html,
+  body,
+  .app-container,
+  .horizontal-main-container,
+  .workspace,
+  .workspace-split.mod-root,
+  .workspace-tabs,
+  .workspace-tab-container,
+  .workspace-leaf,
+  .workspace-leaf-content,
+  .view-content {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide any other workspace leaf that is not the notesheet */
+  .workspace-leaf:not(:has(.notesheet-view-root)) {
+    display: none !important;
   }
 
   .notesheet-view-root {
@@ -1083,17 +1117,26 @@
     height: auto !important;
     overflow: visible !important;
     background: #ffffff !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .notesheet-pages-wrapper {
     padding: 0 !important;
+    margin: 0 !important;
     gap: 0 !important;
     overflow: visible !important;
     display: block !important;
+    width: 100% !important;
   }
 
-  .notesheet-page-sheet {
+  /* Both Page 1 (Front) and Page 2 (Back) are ALWAYS visible in print */
+  .notesheet-page-sheet,
+  .notesheet-page-sheet.tab-hidden {
+    display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
     min-height: auto !important;
     box-shadow: none !important;
     border-radius: 0 !important;
@@ -1101,18 +1144,33 @@
     color: #000000 !important;
     padding: 0 !important;
     margin: 0 !important;
+    box-sizing: border-box !important;
   }
 
-  /* FRONT PAGE FORCED PAGE BREAK */
+  /* FRONT PAGE FORCED PAGE BREAK (Page 1) */
   #notesheet-page-front {
+    display: block !important;
     break-after: page !important;
     page-break-after: always !important;
   }
 
-  /* BACK PAGE FORCED PAGE BREAK */
+  /* BACK PAGE FORCED PAGE BREAK (Page 2) */
   #notesheet-page-back {
+    display: block !important;
     break-before: page !important;
     page-break-before: always !important;
+  }
+
+  .notesheet-columns-grid {
+    display: grid !important;
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  .notesheet-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
   }
 
   .notesheet-card {
@@ -1120,17 +1178,21 @@
     color: #000000 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    border: 1px solid #d0d7de !important;
+    box-shadow: none !important;
   }
 
   .notesheet-card.has-category {
     border-left: 2.5pt solid var(--card-cat-color) !important;
-    border-top: none !important;
+    border-top: 1px solid #d0d7de !important;
   }
 
   .notesheet-category-banner {
     background: #f3f4f6 !important;
     color: #000000 !important;
     border-color: #cccccc !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .category-banner-title {
@@ -1139,6 +1201,7 @@
 
   .notesheet-card-title {
     color: #000000 !important;
+    font-weight: bold !important;
   }
 
   .notesheet-card-body {
@@ -1158,7 +1221,10 @@
     background: #f6f8fa !important;
     border: 1px solid #d0d7de !important;
     color: #24292f !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
+
   .notesheet-card-body .token.comment { color: #57606a !important; }
   .notesheet-card-body .token.keyword { color: #cf222e !important; font-weight: bold !important; }
   .notesheet-card-body .token.string { color: #0a3069 !important; }

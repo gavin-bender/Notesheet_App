@@ -114,7 +114,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const toolbar = new NotesheetToolbar(this.app, this.data, this.activeTab, {
       onTabChange: (tab) => {
         this.activeTab = tab;
-        this.renderPages(pagesWrapper);
+        this.updatePageTabVisibility(pagesWrapper);
       },
       onSettingChange: async () => {
         container.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
@@ -167,13 +167,32 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     container.empty();
     this.cardComponents.clear();
 
-    const pagesToRender = this.data.pages.filter(page => {
-      if (this.activeTab === 'both') return true;
-      return page.id === this.activeTab;
-    });
-
-    for (const page of pagesToRender) {
+    for (const page of this.data.pages) {
       this.renderSinglePage(container, page);
+    }
+
+    this.updatePageTabVisibility(container);
+  }
+
+  private updatePageTabVisibility(container?: HTMLElement): void {
+    const root = container || this.contentEl;
+    const pageFront = root.querySelector<HTMLElement>('#notesheet-page-front');
+    const pageBack = root.querySelector<HTMLElement>('#notesheet-page-back');
+
+    if (pageFront) {
+      if (this.activeTab === 'back') {
+        pageFront.classList.add('tab-hidden');
+      } else {
+        pageFront.classList.remove('tab-hidden');
+      }
+    }
+
+    if (pageBack) {
+      if (this.activeTab === 'front') {
+        pageBack.classList.add('tab-hidden');
+      } else {
+        pageBack.classList.remove('tab-hidden');
+      }
     }
   }
 
@@ -430,18 +449,9 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   }
 
   public printNotesheet(): void {
-    // Switch to both pages temporarily so all front & back pages render in DOM for printing
-    const previousTab = this.activeTab;
-    this.activeTab = 'both';
-    this.render();
-
-    new Notice('Notesheet: Preparing print layout...');
-
+    new Notice('Notesheet: Opening Print / PDF dialog...');
     setTimeout(() => {
       window.print();
-      // Restore previous tab view after printing dialog closes
-      this.activeTab = previousTab;
-      this.render();
-    }, 300);
+    }, 80);
   }
 }
