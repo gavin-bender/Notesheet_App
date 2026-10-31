@@ -112,3 +112,4 @@ export function renderTextWithIcons(container: HTMLElement, text: string): void 
     container.appendText(text.substring(lastIndex));
   }
 }
+

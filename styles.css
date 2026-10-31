@@ -368,9 +368,10 @@
   background: var(--background-secondary-alt);
 }
 
-/* When category is assigned: color accent */
+/* When category is assigned: category color is on the side (replaces the default purple accent) */
 .notesheet-card.has-category {
-  border-top: 3px solid var(--card-cat-color) !important;
+  border-left: 3.5px solid var(--card-cat-color) !important;
+  border-top: none;
 }
 
 .notesheet-card:hover {
@@ -950,7 +951,8 @@
   }
 
   .notesheet-card.has-category {
-    border-top: 2.5pt solid var(--card-cat-color) !important;
+    border-left: 2.5pt solid var(--card-cat-color) !important;
+    border-top: none !important;
   }
 
   .notesheet-category-banner {
