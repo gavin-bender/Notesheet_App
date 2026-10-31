@@ -22,6 +22,11 @@ export class FuzzySuggestModal {
   close() {}
 }
 export class Setting {}
+export class Menu {
+  addItem() { return this; }
+  addSeparator() { return this; }
+  showAtMouseEvent() {}
+}
 export function debounce(fn) {
   return fn;
 }

@@ -3,6 +3,7 @@ import { NotesheetStore } from '../src/storage/NotesheetStore';
 import { createDefaultNotesheetData } from '../src/types';
 import { insertAtCursor } from '../src/view/IconPickerHelper';
 import { normalizeCodeLanguages } from '../src/view/CodeHighlightHelper';
+import { NotesheetCard } from '../src/view/NotesheetCard';
 
 let passed = 0;
 let failed = 0;
@@ -231,6 +232,15 @@ assert(normalizeCodeLanguages(pyCode).includes('```python'), 'Normalizes py to p
 
 const csCode = '```C#\nclass Test {}\n```';
 assert(normalizeCodeLanguages(csCode).includes('```csharp'), 'Normalizes C# to csharp');
+
+// Test 10: Card Editing State & Edit Behaviors
+console.log('\nTest Suite 10: Card Editing State & Edit Behaviors');
+const editTestItem = { id: 'test-edit-1', title: 'Test Card', content: 'hello', order: 1, updatedAt: Date.now() };
+const normalCard = new NotesheetCard(mockApp, {}, {}, editTestItem, {}, [], 'front', {});
+assert(normalCard.getIsEditing() === false, 'Card starts not editing by default');
+
+const autoEditCard = new NotesheetCard(mockApp, {}, {}, editTestItem, {}, [], 'front', {}, { startInEditMode: true });
+assert(autoEditCard.getIsEditing() === true, 'Card with startInEditMode starts in edit state');
 
 console.log(`\n========================================`);
 console.log(`TEST SUMMARY: ${passed} passed, ${failed} failed.`);

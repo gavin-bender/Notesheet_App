@@ -18,6 +18,14 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   private currentFile: TFile | null = null;
   private activeTab: 'front' | 'back' | 'both' = 'front';
   private cardComponents: Map<string, NotesheetCard> = new Map();
+  private initialEditCardId: string | null = null;
+
+  private isAnyCardEditing(): boolean {
+    for (const card of this.cardComponents.values()) {
+      if (card.getIsEditing()) return true;
+    }
+    return false;
+  }
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -365,14 +373,23 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
           },
           {
             hideCategoryBanner,
-            hideCardTitle
+            hideCardTitle,
+            startInEditMode: this.initialEditCardId === item.id
           }
         );
 
+        if (this.initialEditCardId === item.id) {
+          this.initialEditCardId = null;
+        }
+
         const cardEl = cardComp.render(targetCol);
 
-        // Dragstart event for card
+        // Dragstart event for card: Disabled if editing
         cardEl.addEventListener('dragstart', (e) => {
+          if (cardComp.getIsEditing() || this.isAnyCardEditing()) {
+            e.preventDefault();
+            return false;
+          }
           e.dataTransfer?.setData('text/plain', item.id);
         });
 
@@ -391,7 +408,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     }
   }
 
-  private promptAddCard(): void {
+  private async promptAddCard(): Promise<void> {
     const targetPageId = this.activeTab === 'back' ? 'back' : 'front';
     const targetPage = this.data.pages.find(p => p.id === targetPageId) || this.data.pages[0];
 
@@ -400,15 +417,16 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       sourceFile: '',
       blockId: '',
       title: 'New Card',
-      content: 'Write exam notes or formulas here. Supports $LaTeX$ math!',
+      content: '',
       column: 0,
       order: Date.now(),
       updatedAt: Date.now()
     };
 
     targetPage.items.push(newItem);
-    this.saveData();
-    this.render();
+    this.initialEditCardId = newItem.id;
+    await this.saveData();
+    await this.render();
   }
 
   public printNotesheet(): void {

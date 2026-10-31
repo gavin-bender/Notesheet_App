@@ -81,3 +81,4 @@ export async function highlightCodeBlocks(container: HTMLElement): Promise<void>
     console.debug('Error highlighting code blocks:', err);
   }
 }
+

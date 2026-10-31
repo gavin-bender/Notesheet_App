@@ -1049,14 +1049,38 @@ var NotesheetCard = class {
     this.currentPageId = currentPageId;
     this.callbacks = callbacks;
     this.options = options || {};
+    if (this.options.startInEditMode) {
+      this.isEditing = true;
+    }
+  }
+  getIsEditing() {
+    return this.isEditing;
+  }
+  startEditing(focus = true) {
+    if (this.isEditing) return;
+    this.isEditing = true;
+    if (this.cardEl) {
+      this.cardEl.setAttribute("draggable", "false");
+      this.cardEl.addClass("is-editing");
+      this.renderEditMode();
+      if (focus) {
+        setTimeout(() => {
+          const titleInput = this.cardEl?.querySelector(".notesheet-card-title-input");
+          if (titleInput) {
+            titleInput.focus();
+            titleInput.select();
+          }
+        }, 50);
+      }
+    }
   }
   render(container) {
     const category = this.categories.find((c) => c.id === this.item.categoryId);
     this.cardEl = container.createDiv({
-      cls: `notesheet-card ${this.settings.showBorders ? "has-border" : "no-border"} ${category ? "has-category" : ""}`
+      cls: `notesheet-card ${this.settings.showBorders ? "has-border" : "no-border"} ${category ? "has-category" : ""} ${this.isEditing ? "is-editing" : ""}`
     });
     this.cardEl.dataset.itemId = this.item.id;
-    this.cardEl.setAttribute("draggable", "true");
+    this.cardEl.setAttribute("draggable", this.isEditing ? "false" : "true");
     if (category) {
       this.cardEl.style.setProperty("--card-cat-color", category.color);
     } else {
@@ -1064,6 +1088,15 @@ var NotesheetCard = class {
     }
     if (this.isEditing) {
       this.renderEditMode();
+      if (this.options.startInEditMode) {
+        setTimeout(() => {
+          const titleInput = this.cardEl?.querySelector(".notesheet-card-title-input");
+          if (titleInput) {
+            titleInput.focus();
+            titleInput.select();
+          }
+        }, 50);
+      }
     } else {
       this.renderViewMode();
     }
@@ -1140,8 +1173,7 @@ var NotesheetCard = class {
     editBtn.title = "Edit content (two-way syncs to note)";
     editBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.isEditing = true;
-      this.renderEditMode();
+      this.startEditing(true);
     });
     const deleteBtn = actionsEl.createEl("button", { cls: "notesheet-btn-icon btn-danger" });
     (0, import_obsidian7.setIcon)(deleteBtn, "trash-2");
@@ -1166,6 +1198,15 @@ var NotesheetCard = class {
       this.component
     ).then(() => {
       highlightCodeBlocks(bodyEl);
+    });
+    this.cardEl.addEventListener("dblclick", (e) => {
+      const target = e.target;
+      if (target.closest("button") || target.closest(".notesheet-btn-icon") || target.closest(".notesheet-card-category-pill") || target.closest(".notesheet-card-drag-handle") || target.closest("a")) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      this.startEditing(true);
     });
   }
   /**
@@ -1230,6 +1271,8 @@ var NotesheetCard = class {
   }
   renderEditMode() {
     this.cardEl.empty();
+    this.cardEl.setAttribute("draggable", "false");
+    this.cardEl.addClass("is-editing");
     const editWrapper = this.cardEl.createDiv({ cls: "notesheet-card-edit-wrapper" });
     const inputsRow = editWrapper.createDiv({ cls: "notesheet-card-inputs-row" });
     const titleInput = inputsRow.createEl("input", {
@@ -1279,13 +1322,25 @@ var NotesheetCard = class {
       openIconPickerForElement(this.app, textarea);
     });
     const shortcutHint = textareaToolbar.createSpan({ cls: "notesheet-toolbar-hint" });
-    shortcutHint.setText("Shortcut: \u2318I / Ctrl+I (or type ::)");
+    shortcutHint.setText("Shift+Enter to finish \u2022 \u2318I for icons");
     const textarea = editWrapper.createEl("textarea", {
       cls: "notesheet-card-textarea"
     });
     textarea.value = this.item.content;
     textarea.rows = Math.min(15, Math.max(3, this.item.content.split("\n").length + 1));
     const handleKeydown = (e, el) => {
+      if (e.key === "Enter" && (e.shiftKey || e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSave();
+        return;
+      }
+      if (el === titleInput && e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSave();
+        return;
+      }
       if ((e.metaKey || e.ctrlKey) && (e.key === "i" || e.key === "I")) {
         e.preventDefault();
         openIconPickerForElement(this.app, el);
@@ -1306,6 +1361,8 @@ var NotesheetCard = class {
     const cancelBtn = btnRow.createEl("button", { text: "Cancel" });
     cancelBtn.addEventListener("click", () => {
       this.isEditing = false;
+      this.cardEl.setAttribute("draggable", "true");
+      this.cardEl.removeClass("is-editing");
       this.renderViewMode();
     });
     const saveBtn = btnRow.createEl("button", { text: "Save & Sync", cls: "mod-cta" });
@@ -1328,17 +1385,18 @@ var NotesheetCard = class {
       }
       await this.callbacks.onUpdate(this.item);
       this.isEditing = false;
+      this.cardEl.setAttribute("draggable", "true");
+      this.cardEl.removeClass("is-editing");
       this.renderViewMode();
     };
     saveBtn.addEventListener("click", handleSave);
-    textarea.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        handleSave();
-      }
-    });
     setTimeout(() => {
-      textarea.focus();
+      if (this.item.title === "New Card" || !this.item.title) {
+        titleInput.focus();
+        titleInput.select();
+      } else {
+        textarea.focus();
+      }
     }, 50);
   }
   async openSourceNote() {
@@ -1642,10 +1700,17 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     this.currentFile = null;
     this.activeTab = "front";
     this.cardComponents = /* @__PURE__ */ new Map();
+    this.initialEditCardId = null;
     this.store = store;
     this.syncManager = syncManager;
     this.blockManager = blockManager;
     this.data = createDefaultNotesheetData();
+  }
+  isAnyCardEditing() {
+    for (const card of this.cardComponents.values()) {
+      if (card.getIsEditing()) return true;
+    }
+    return false;
   }
   getViewType() {
     return NOTESHEET_VIEW_TYPE;
@@ -1916,11 +1981,19 @@ var NotesheetView = class extends import_obsidian10.ItemView {
           },
           {
             hideCategoryBanner,
-            hideCardTitle
+            hideCardTitle,
+            startInEditMode: this.initialEditCardId === item.id
           }
         );
+        if (this.initialEditCardId === item.id) {
+          this.initialEditCardId = null;
+        }
         const cardEl = cardComp.render(targetCol);
         cardEl.addEventListener("dragstart", (e) => {
+          if (cardComp.getIsEditing() || this.isAnyCardEditing()) {
+            e.preventDefault();
+            return false;
+          }
           e.dataTransfer?.setData("text/plain", item.id);
         });
         this.cardComponents.set(item.id, cardComp);
@@ -1935,7 +2008,7 @@ var NotesheetView = class extends import_obsidian10.ItemView {
       });
     }
   }
-  promptAddCard() {
+  async promptAddCard() {
     const targetPageId = this.activeTab === "back" ? "back" : "front";
     const targetPage = this.data.pages.find((p) => p.id === targetPageId) || this.data.pages[0];
     const newItem = {
@@ -1943,14 +2016,15 @@ var NotesheetView = class extends import_obsidian10.ItemView {
       sourceFile: "",
       blockId: "",
       title: "New Card",
-      content: "Write exam notes or formulas here. Supports $LaTeX$ math!",
+      content: "",
       column: 0,
       order: Date.now(),
       updatedAt: Date.now()
     };
     targetPage.items.push(newItem);
-    this.saveData();
-    this.render();
+    this.initialEditCardId = newItem.id;
+    await this.saveData();
+    await this.render();
   }
   printNotesheet() {
     const previousTab = this.activeTab;

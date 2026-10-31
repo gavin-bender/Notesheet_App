@@ -17,6 +17,7 @@ export interface CardActionCallbacks {
 export interface CardRenderOptions {
   hideCategoryBanner?: boolean;
   hideCardTitle?: boolean;
+  startInEditMode?: boolean;
 }
 
 export class NotesheetCard {
@@ -52,16 +53,42 @@ export class NotesheetCard {
     this.currentPageId = currentPageId;
     this.callbacks = callbacks;
     this.options = options || {};
+    if (this.options.startInEditMode) {
+      this.isEditing = true;
+    }
+  }
+
+  public getIsEditing(): boolean {
+    return this.isEditing;
+  }
+
+  public startEditing(focus = true): void {
+    if (this.isEditing) return;
+    this.isEditing = true;
+    if (this.cardEl) {
+      this.cardEl.setAttribute('draggable', 'false');
+      this.cardEl.addClass('is-editing');
+      this.renderEditMode();
+      if (focus) {
+        setTimeout(() => {
+          const titleInput = this.cardEl?.querySelector<HTMLInputElement>('.notesheet-card-title-input');
+          if (titleInput) {
+            titleInput.focus();
+            titleInput.select();
+          }
+        }, 50);
+      }
+    }
   }
 
   public render(container: HTMLElement): HTMLElement {
     const category = this.categories.find(c => c.id === this.item.categoryId);
 
     this.cardEl = container.createDiv({
-      cls: `notesheet-card ${this.settings.showBorders ? 'has-border' : 'no-border'} ${category ? 'has-category' : ''}`
+      cls: `notesheet-card ${this.settings.showBorders ? 'has-border' : 'no-border'} ${category ? 'has-category' : ''} ${this.isEditing ? 'is-editing' : ''}`
     });
     this.cardEl.dataset.itemId = this.item.id;
-    this.cardEl.setAttribute('draggable', 'true');
+    this.cardEl.setAttribute('draggable', this.isEditing ? 'false' : 'true');
 
     if (category) {
       this.cardEl.style.setProperty('--card-cat-color', category.color);
@@ -71,6 +98,15 @@ export class NotesheetCard {
 
     if (this.isEditing) {
       this.renderEditMode();
+      if (this.options.startInEditMode) {
+        setTimeout(() => {
+          const titleInput = this.cardEl?.querySelector<HTMLInputElement>('.notesheet-card-title-input');
+          if (titleInput) {
+            titleInput.focus();
+            titleInput.select();
+          }
+        }, 50);
+      }
     } else {
       this.renderViewMode();
     }
@@ -174,8 +210,7 @@ export class NotesheetCard {
     editBtn.title = 'Edit content (two-way syncs to note)';
     editBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.isEditing = true;
-      this.renderEditMode();
+      this.startEditing(true);
     });
 
     // Delete button
@@ -205,6 +240,23 @@ export class NotesheetCard {
       this.component
     ).then(() => {
       highlightCodeBlocks(bodyEl);
+    });
+
+    // Double click to edit card
+    this.cardEl.addEventListener('dblclick', (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('button') ||
+        target.closest('.notesheet-btn-icon') ||
+        target.closest('.notesheet-card-category-pill') ||
+        target.closest('.notesheet-card-drag-handle') ||
+        target.closest('a')
+      ) {
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      this.startEditing(true);
     });
   }
 
@@ -305,6 +357,8 @@ export class NotesheetCard {
 
   private renderEditMode(): void {
     this.cardEl.empty();
+    this.cardEl.setAttribute('draggable', 'false');
+    this.cardEl.addClass('is-editing');
 
     const editWrapper = this.cardEl.createDiv({ cls: 'notesheet-card-edit-wrapper' });
 
@@ -369,7 +423,7 @@ export class NotesheetCard {
     });
 
     const shortcutHint = textareaToolbar.createSpan({ cls: 'notesheet-toolbar-hint' });
-    shortcutHint.setText('Shortcut: ⌘I / Ctrl+I (or type ::)');
+    shortcutHint.setText('Shift+Enter to finish • ⌘I for icons');
 
     // Markdown Textarea
     const textarea = editWrapper.createEl('textarea', {
@@ -380,6 +434,23 @@ export class NotesheetCard {
 
     // Hotkey & inline :: triggers for titleInput and textarea
     const handleKeydown = (e: KeyboardEvent, el: HTMLInputElement | HTMLTextAreaElement) => {
+      // Shift+Enter, Cmd+Enter, or Ctrl+Enter finishes edit and saves
+      if (e.key === 'Enter' && (e.shiftKey || e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSave();
+        return;
+      }
+
+      // Enter in Title input finishes edit and saves
+      if (el === titleInput && e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSave();
+        return;
+      }
+
+      // Cmd+I / Ctrl+I to open icon picker
       if ((e.metaKey || e.ctrlKey) && (e.key === 'i' || e.key === 'I')) {
         e.preventDefault();
         openIconPickerForElement(this.app, el);
@@ -405,6 +476,8 @@ export class NotesheetCard {
     const cancelBtn = btnRow.createEl('button', { text: 'Cancel' });
     cancelBtn.addEventListener('click', () => {
       this.isEditing = false;
+      this.cardEl.setAttribute('draggable', 'true');
+      this.cardEl.removeClass('is-editing');
       this.renderViewMode();
     });
 
@@ -432,21 +505,20 @@ export class NotesheetCard {
 
       await this.callbacks.onUpdate(this.item);
       this.isEditing = false;
+      this.cardEl.setAttribute('draggable', 'true');
+      this.cardEl.removeClass('is-editing');
       this.renderViewMode();
     };
 
     saveBtn.addEventListener('click', handleSave);
 
-    // Keyboard shortcut: Ctrl/Cmd + Enter to save
-    textarea.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        handleSave();
-      }
-    });
-
     setTimeout(() => {
-      textarea.focus();
+      if (this.item.title === 'New Card' || !this.item.title) {
+        titleInput.focus();
+        titleInput.select();
+      } else {
+        textarea.focus();
+      }
     }, 50);
   }
 
