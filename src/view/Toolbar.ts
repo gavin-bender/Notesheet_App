@@ -6,6 +6,7 @@ export interface ToolbarCallbacks {
   onSettingChange: () => Promise<void>;
   onAddCard: () => void;
   onOpenPicker: () => void;
+  onPrintPreview: () => void;
   onPrint: () => void;
   onSyncAll: () => Promise<void>;
   onTitleChange: (newTitle: string) => Promise<void>;
@@ -110,6 +111,16 @@ export class NotesheetToolbar {
       await this.callbacks.onSyncAll();
       setTimeout(() => syncIcon.removeClass('rotating'), 600);
     });
+
+    // Print Preview Button
+    const previewBtn = actionsContainer.createEl('button', {
+      cls: 'notesheet-btn-toolbar preview-btn'
+    });
+    const previewIcon = previewBtn.createSpan();
+    setIcon(previewIcon, 'eye');
+    previewBtn.createSpan({ text: ' Print Preview' });
+    previewBtn.title = 'Preview pages exactly as they will look when printed';
+    previewBtn.addEventListener('click', () => this.callbacks.onPrintPreview());
 
     // Print Exam Notesheet Button
     const printBtn = actionsContainer.createEl('button', {

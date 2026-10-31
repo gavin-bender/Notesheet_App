@@ -7,6 +7,7 @@ import { NotesheetToolbar } from './Toolbar';
 import { NotesheetCard } from './NotesheetCard';
 import { BlockPickerModal } from './BlockPickerModal';
 import { CategoryManagerModal } from './CategoryManagerModal';
+import { PrintPreviewModal } from './PrintPreviewModal';
 
 export const NOTESHEET_VIEW_TYPE = 'notesheet-view';
 
@@ -190,6 +191,9 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         new BlockPickerModal(this.app, this.blockManager, targetPage, async (newItem, pId) => {
           await this.addItem(newItem, pId);
         }).open();
+      },
+      onPrintPreview: () => {
+        new PrintPreviewModal(this.app, this.data, this).open();
       },
       onPrint: () => {
         this.printNotesheet();
@@ -610,21 +614,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     this.cleanPrintContainer();
   };
 
-  public setupPrintContainer(): HTMLElement {
-    this.cleanPrintContainer();
-    const printContainer = document.body.createDiv({
-      cls: `print notesheet-print-container density-${this.data.settings.density || 'compact'}`
-    });
-    printContainer.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
-    printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
-
-    // Inject dynamic @page style for margins and page size
-    const marginInches = this.data.settings.margins === 'tight' ? '0.2in' : this.data.settings.margins === 'normal' ? '0.5in' : '0.25in';
-    const dynamicStyle = document.createElement('style');
-    dynamicStyle.id = 'notesheet-print-dynamic-style';
-    dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
-    document.head.appendChild(dynamicStyle);
-
+  public createPrintPageElements(): HTMLElement[] {
+    const pages: HTMLElement[] = [];
     const pageEls = this.contentEl.querySelectorAll<HTMLElement>('.notesheet-page-sheet');
     pageEls.forEach((pageEl) => {
       const origGrid = pageEl.querySelector<HTMLElement>('.notesheet-columns-grid');
@@ -653,9 +644,31 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         cloneGrid.style.zoom = origGrid.style.zoom;
       }
 
-      printContainer.appendChild(clone);
+      pages.push(clone);
+    });
+    return pages;
+  }
+
+  public setupPrintContainer(): HTMLElement {
+    this.cleanPrintContainer();
+    const printContainer = document.body.createDiv({
+      cls: `print notesheet-print-container density-${this.data.settings.density || 'compact'}`
+    });
+    printContainer.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
+    printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
+
+    // Inject dynamic @page style for margins and page size
+    const marginInches = this.data.settings.margins === 'tight' ? '0.2in' : this.data.settings.margins === 'normal' ? '0.5in' : '0.25in';
+    const dynamicStyle = document.createElement('style');
+    dynamicStyle.id = 'notesheet-print-dynamic-style';
+    dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
+    document.head.appendChild(dynamicStyle);
+
+    const pages = this.createPrintPageElements();
+    pages.forEach((pageEl) => {
+      printContainer.appendChild(pageEl);
       // Run fit calculation directly on the print clone to ensure exact 1-page fit
-      this.updatePageFit(clone);
+      this.updatePageFit(pageEl);
     });
 
     return printContainer;

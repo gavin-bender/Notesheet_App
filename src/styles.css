@@ -1399,6 +1399,410 @@
 }
 
 /* ========================================================
+   PRINT PREVIEW MODAL & EXACT ON-SCREEN PREVIEW
+   ======================================================== */
+
+.notesheet-preview-modal {
+  width: 95vw !important;
+  max-width: 1100px !important;
+  height: 92vh !important;
+  max-height: 92vh !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background-color: var(--background-primary) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6) !important;
+}
+
+.notesheet-preview-modal .modal-close-button {
+  display: none !important;
+}
+
+.notesheet-preview-modal-body {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.notesheet-preview-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--notesheet-border-color);
+  flex-shrink: 0;
+  gap: 12px;
+  z-index: 20;
+}
+
+.preview-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.preview-modal-title {
+  font-weight: 800;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--interactive-accent);
+  white-space: nowrap;
+}
+
+.preview-modal-info {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.preview-zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--background-primary);
+  border: 1px solid var(--notesheet-border-color);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.preview-btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+.preview-btn-icon:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.preview-zoom-label {
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 38px;
+  text-align: center;
+  color: var(--text-normal);
+}
+
+.notesheet-preview-backdrop {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: #525659;
+  padding: 28px 16px 60px 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.notesheet-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+  transition: transform 0.1s ease-out;
+}
+
+.notesheet-preview-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.notesheet-preview-sheet-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f0f0f0;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3px 12px;
+  border-radius: 12px;
+  letter-spacing: 0.5px;
+}
+
+/* Print Preview Paper Sheets (Exact Print Replica on Screen) */
+.notesheet-preview-container .notesheet-page-sheet {
+  background: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+  border-radius: 2px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-letter {
+  width: 816px !important;
+  height: 1056px !important;
+  max-width: 816px !important;
+  max-height: 1056px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-a4 {
+  width: 794px !important;
+  height: 1123px !important;
+  max-width: 794px !important;
+  max-height: 1123px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.margin-tight {
+  padding: 19.2px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.margin-compact {
+  padding: 28.8px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.margin-normal {
+  padding: 48px !important;
+}
+
+/* Page Header in Preview */
+.notesheet-preview-container .notesheet-page-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 2px solid #333333 !important;
+  padding-bottom: 3px !important;
+  margin-bottom: 6px !important;
+}
+
+.notesheet-preview-container .page-title {
+  color: #000000 !important;
+  font-size: 12pt !important;
+  font-weight: 800 !important;
+}
+
+.notesheet-preview-container .page-stats {
+  color: #555555 !important;
+  font-size: 8.5pt !important;
+}
+
+/* Columns Grid in Preview */
+.notesheet-preview-container .notesheet-columns-grid {
+  display: grid !important;
+  width: 100% !important;
+  gap: 6px !important;
+}
+
+.notesheet-preview-container .notesheet-columns-grid.cols-1 { grid-template-columns: 1fr !important; }
+.notesheet-preview-container .notesheet-columns-grid.cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
+.notesheet-preview-container .notesheet-columns-grid.cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
+.notesheet-preview-container .notesheet-columns-grid.cols-4 { grid-template-columns: repeat(4, 1fr) !important; }
+
+.notesheet-preview-container .notesheet-column {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+/* Cards in Preview */
+.notesheet-preview-container .notesheet-card {
+  color: #000000 !important;
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.notesheet-preview-container .notesheet-card.has-border {
+  border: 1px solid #d0d7de !important;
+  padding: 4px 6px !important;
+}
+
+.notesheet-preview-container .notesheet-card.has-border.has-category {
+  border: 1px solid #d0d7de !important;
+  border-left: 3.5pt solid var(--card-cat-color) !important;
+}
+
+.notesheet-preview-container .notesheet-card.no-border {
+  border: none !important;
+  padding: 4px 6px !important;
+}
+
+.notesheet-preview-container .notesheet-card.no-border.has-category {
+  border: none !important;
+  border-left: 3.5pt solid var(--card-cat-color) !important;
+}
+
+.notesheet-preview-container .notesheet-card.has-category {
+  border-left: 3.5pt solid var(--card-cat-color) !important;
+}
+
+.notesheet-preview-container .notesheet-card.no-background {
+  background: #ffffff !important;
+}
+
+.notesheet-preview-container .notesheet-card.has-background {
+  background: #f6f8fa !important;
+}
+
+.notesheet-preview-container .notesheet-card-header {
+  display: flex !important;
+  align-items: center !important;
+  border-bottom: 1px solid #e1e4e8 !important;
+  padding-bottom: 2px !important;
+  margin-bottom: 3px !important;
+}
+
+.notesheet-preview-container .notesheet-card-header:empty,
+.notesheet-preview-container .notesheet-card-header:not(:has(.notesheet-card-title)) {
+  display: none !important;
+}
+
+.notesheet-preview-container .notesheet-card-title {
+  color: #000000 !important;
+  font-size: var(--notesheet-font-size, 8.5pt) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
+
+.notesheet-preview-container .notesheet-card-body {
+  color: #000000 !important;
+  font-size: var(--notesheet-font-size, 8.5pt) !important;
+  line-height: 1.25 !important;
+}
+
+.notesheet-preview-container .notesheet-card-body p {
+  margin: 2px 0 !important;
+  line-height: 1.25 !important;
+}
+
+.notesheet-preview-container .notesheet-card-body ul,
+.notesheet-preview-container .notesheet-card-body ol {
+  margin: 2px 0 !important;
+  padding-inline-start: 16px !important;
+}
+
+.notesheet-preview-container .notesheet-card-body li {
+  margin: 1px 0 !important;
+  line-height: 1.25 !important;
+}
+
+.notesheet-preview-container .notesheet-card-body pre {
+  background: #f6f8fa !important;
+  border: 1px solid #d0d7de !important;
+  border-radius: 3px !important;
+  padding: 3px 5px !important;
+  margin: 3px 0 !important;
+  color: #24292f !important;
+  line-height: 1.25 !important;
+}
+
+.notesheet-preview-container .notesheet-card-body code,
+.notesheet-preview-container .notesheet-card-body pre code {
+  font-size: calc(var(--notesheet-font-size, 8.5pt) - 1pt) !important;
+  line-height: 1.25 !important;
+}
+
+.notesheet-preview-container .notesheet-card-body .token.comment { color: #57606a !important; font-style: italic !important; }
+.notesheet-preview-container .notesheet-card-body .token.keyword { color: #cf222e !important; font-weight: bold !important; }
+.notesheet-preview-container .notesheet-card-body .token.string { color: #0a3069 !important; }
+.notesheet-preview-container .notesheet-card-body .token.function { color: #8250df !important; }
+.notesheet-preview-container .notesheet-card-body .token.number,
+.notesheet-preview-container .notesheet-card-body .token.boolean { color: #0550ae !important; }
+
+.notesheet-preview-container .notesheet-page-footer {
+  display: flex !important;
+  justify-content: space-between !important;
+  color: #555555 !important;
+  border-top: 1px solid #cccccc !important;
+  padding-top: 3px !important;
+  margin-top: auto !important;
+  font-size: 7.5pt !important;
+}
+
+/* Compact Density in Preview */
+.notesheet-preview-container.density-compact .notesheet-columns-grid,
+.notesheet-preview-container.density-compact .notesheet-column {
+  gap: 4px !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card.has-border,
+.notesheet-preview-container.density-compact .notesheet-card.no-border {
+  padding: 2.5px 5px !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-header {
+  border-bottom: 1px solid #e1e4e8 !important;
+  padding-bottom: 1px !important;
+  margin-bottom: 2px !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-title {
+  font-size: calc(var(--notesheet-font-size, 8.5pt) * 0.9) !important;
+  line-height: 1.15 !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-body {
+  line-height: 1.18 !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-body p {
+  margin: 1px 0 !important;
+  line-height: 1.18 !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-body pre {
+  margin: 2px 0 !important;
+  padding: 2px 4px !important;
+  line-height: 1.15 !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-body code,
+.notesheet-preview-container.density-compact .notesheet-card-body pre code {
+  font-size: calc(var(--notesheet-font-size, 8.5pt) - 1.2pt) !important;
+  line-height: 1.15 !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-body ul,
+.notesheet-preview-container.density-compact .notesheet-card-body ol {
+  margin: 1px 0 !important;
+  padding-inline-start: 13px !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-card-body li {
+  margin: 0 !important;
+  line-height: 1.18 !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-page-header {
+  padding-bottom: 2px !important;
+  margin-bottom: 4px !important;
+}
+
+.notesheet-preview-container.density-compact .notesheet-page-footer {
+  padding-top: 2px !important;
+  margin-top: auto !important;
+  font-size: 7.5pt !important;
+}
+
+/* ========================================================
    EXAM PRINTING RULES (@media print)
    ======================================================== */
 

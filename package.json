@@ -1,6 +1,6 @@
 {
   "name": "obsidian-notesheet",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "description": "Exam Notesheet maker for Obsidian: organize note blocks onto 2-page front/back sheets with two-way sync and print optimization.",
   "main": "main.js",
   "scripts": {
