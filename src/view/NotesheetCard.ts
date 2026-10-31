@@ -3,6 +3,7 @@ import { NotesheetItem, NotesheetSettings, NotesheetCategory } from '../types';
 import { SyncManager } from '../sync/SyncManager';
 import { renderTextWithIcons } from './IconRenderer';
 import { openIconPickerForElement } from './IconPickerHelper';
+import { normalizeCodeLanguages, highlightCodeBlocks } from './CodeHighlightHelper';
 
 export interface CardActionCallbacks {
   onUpdate: (item: NotesheetItem) => Promise<void>;
@@ -188,10 +189,12 @@ export class NotesheetCard {
 
     // Card Body: Render Markdown (with duplicate title stripped if header already shows it)
     const bodyEl = this.cardEl.createDiv({ cls: 'notesheet-card-body' });
-    const contentToRender = this.getDisplayContent(
-      this.item.content,
-      displayTitle,
-      this.settings.showCardTitles
+    const contentToRender = normalizeCodeLanguages(
+      this.getDisplayContent(
+        this.item.content,
+        displayTitle,
+        this.settings.showCardTitles
+      )
     );
 
     MarkdownRenderer.render(
@@ -200,7 +203,9 @@ export class NotesheetCard {
       bodyEl,
       this.item.sourceFile || '',
       this.component
-    );
+    ).then(() => {
+      highlightCodeBlocks(bodyEl);
+    });
   }
 
   /**

@@ -588,12 +588,93 @@
   word-break: break-word;
 }
 
-.notesheet-card-body pre,
-.notesheet-card-body code {
-  max-width: 100%;
+.notesheet-card-body pre {
+  margin: 4px 0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--code-background, var(--background-secondary));
+  border: 1px solid var(--notesheet-border-color);
+  font-size: 0.9em;
+  line-height: 1.35;
   overflow-x: auto;
+  position: relative;
+}
+
+.notesheet-card-body pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  border: none !important;
+  font-family: var(--font-monospace);
+  font-size: 0.95em;
+  color: var(--code-normal, var(--text-normal));
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.notesheet-card-body :not(pre) > code {
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--code-background, var(--background-secondary));
+  color: var(--code-normal, var(--text-normal));
+}
+
+/* Syntax Highlighting Tokens in Notesheet Cards */
+.notesheet-card-body .token.comment,
+.notesheet-card-body .token.prolog,
+.notesheet-card-body .token.doctype,
+.notesheet-card-body .token.cdata {
+  color: var(--code-comment, #8b949e) !important;
+  font-style: italic;
+}
+
+.notesheet-card-body .token.punctuation {
+  color: var(--code-punctuation, #8b949e) !important;
+}
+
+.notesheet-card-body .token.property,
+.notesheet-card-body .token.tag,
+.notesheet-card-body .token.boolean,
+.notesheet-card-body .token.number,
+.notesheet-card-body .token.constant,
+.notesheet-card-body .token.symbol,
+.notesheet-card-body .token.deleted {
+  color: var(--code-value, #79c0ff) !important;
+}
+
+.notesheet-card-body .token.selector,
+.notesheet-card-body .token.attr-name,
+.notesheet-card-body .token.string,
+.notesheet-card-body .token.char,
+.notesheet-card-body .token.builtin,
+.notesheet-card-body .token.inserted {
+  color: var(--code-string, #a5d6ff) !important;
+}
+
+.notesheet-card-body .token.operator,
+.notesheet-card-body .token.entity,
+.notesheet-card-body .token.url {
+  color: var(--code-operator, #ff7b72) !important;
+}
+
+.notesheet-card-body .token.atrule,
+.notesheet-card-body .token.attr-value,
+.notesheet-card-body .token.keyword {
+  color: var(--code-keyword, #ff7b72) !important;
+  font-weight: 600;
+}
+
+.notesheet-card-body .token.function,
+.notesheet-card-body .token.class-name {
+  color: var(--code-function, #d2a8ff) !important;
+  font-weight: 500;
+}
+
+.notesheet-card-body .token.regex,
+.notesheet-card-body .token.important,
+.notesheet-card-body .token.variable {
+  color: var(--code-important, #ffa657) !important;
 }
 
 .notesheet-card-body table {
@@ -1061,4 +1142,15 @@
     color: #555555 !important;
     border-color: #cccccc !important;
   }
+
+  .notesheet-card-body pre {
+    background: #f6f8fa !important;
+    border: 1px solid #d0d7de !important;
+    color: #24292f !important;
+  }
+  .notesheet-card-body .token.comment { color: #57606a !important; }
+  .notesheet-card-body .token.keyword { color: #cf222e !important; font-weight: bold !important; }
+  .notesheet-card-body .token.string { color: #0a3069 !important; }
+  .notesheet-card-body .token.function { color: #8250df !important; }
+  .notesheet-card-body .token.number, .notesheet-card-body .token.boolean { color: #0550ae !important; }
 }

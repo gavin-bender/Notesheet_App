@@ -2,6 +2,7 @@ import { BlockManager } from '../src/sync/BlockManager';
 import { NotesheetStore } from '../src/storage/NotesheetStore';
 import { createDefaultNotesheetData } from '../src/types';
 import { insertAtCursor } from '../src/view/IconPickerHelper';
+import { normalizeCodeLanguages } from '../src/view/CodeHighlightHelper';
 
 let passed = 0;
 let failed = 0;
@@ -219,6 +220,17 @@ const mockInput3 = {
 
 insertAtCursor(mockInput3, ':luc_code: ');
 assert(mockInput3.value === 'Normal Card Title :luc_code: ', 'Appends icon at cursor when no colon prefix');
+
+// Test 9: Code Language Normalization
+console.log('\nTest Suite 9: Code Language Normalization');
+const cppCode = '```c++\nbool operator==(const Point& other) const;\n```';
+assert(normalizeCodeLanguages(cppCode).includes('```cpp'), 'Normalizes c++ to cpp for Prism');
+
+const pyCode = '```py\ndef solve(): pass\n```';
+assert(normalizeCodeLanguages(pyCode).includes('```python'), 'Normalizes py to python');
+
+const csCode = '```C#\nclass Test {}\n```';
+assert(normalizeCodeLanguages(csCode).includes('```csharp'), 'Normalizes C# to csharp');
 
 console.log(`\n========================================`);
 console.log(`TEST SUMMARY: ${passed} passed, ${failed} failed.`);

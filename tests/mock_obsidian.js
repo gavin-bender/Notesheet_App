@@ -35,3 +35,19 @@ export function getIcon(name) {
 export function getIconIds() {
   return ['layers', 'mouse-pointer', 'code', 'book'];
 }
+export async function loadPrism() {
+  return {
+    languages: {
+      cpp: {},
+      c: {},
+      javascript: {},
+      python: {}
+    },
+    highlightElement(el) {}
+  };
+}
+export class MarkdownRenderer {
+  static async render(app, md, el, path, component) {
+    if (el) el.innerHTML = md;
+  }
+}
