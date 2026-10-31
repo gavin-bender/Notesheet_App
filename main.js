@@ -49,6 +49,8 @@ var DEFAULT_NOTESHEET_SETTINGS = {
   fontSize: 8.5,
   lineHeight: 1.25,
   margins: "compact",
+  density: "compact",
+  autoFitPage: true,
   showBorders: true,
   showCardTitles: true,
   showSourceLinks: true,
@@ -61,6 +63,8 @@ var DEFAULT_PLUGIN_SETTINGS = {
   defaultPageSize: "letter",
   defaultOrientation: "portrait",
   defaultMargins: "compact",
+  defaultDensity: "compact",
+  defaultAutoFitPage: true,
   defaultFolder: "",
   activeNotesheetPath: "",
   confirmCardDelete: false
@@ -128,6 +132,12 @@ ${jsonStr}
             if (parsed.settings.showCategoryTitles === void 0) {
               parsed.settings.showCategoryTitles = true;
             }
+            if (parsed.settings.density === void 0) {
+              parsed.settings.density = "compact";
+            }
+            if (parsed.settings.autoFitPage === void 0) {
+              parsed.settings.autoFitPage = true;
+            }
           }
           const cleanTitleStr = (t) => {
             if (!t) return "";
@@ -160,8 +170,16 @@ ${jsonStr}
         if (!parsed.categories || !Array.isArray(parsed.categories)) {
           parsed.categories = [...DEFAULT_CATEGORIES];
         }
-        if (parsed.settings && parsed.settings.showCategoryTitles === void 0) {
-          parsed.settings.showCategoryTitles = true;
+        if (parsed.settings) {
+          if (parsed.settings.showCategoryTitles === void 0) {
+            parsed.settings.showCategoryTitles = true;
+          }
+          if (parsed.settings.density === void 0) {
+            parsed.settings.density = "compact";
+          }
+          if (parsed.settings.autoFitPage === void 0) {
+            parsed.settings.autoFitPage = true;
+          }
         }
         return parsed;
       }
@@ -674,6 +692,34 @@ var NotesheetToolbar = class {
     marginSelect.addEventListener("change", async () => {
       this.data.settings.margins = marginSelect.value;
       await this.callbacks.onSettingChange();
+    });
+    const densityGroup = row2.createDiv({ cls: "toolbar-group" });
+    densityGroup.createSpan({ text: "Density:", cls: "group-label" });
+    const densitySelect = densityGroup.createEl("select", { cls: "notesheet-select" });
+    [
+      { id: "compact", name: "Compact" },
+      { id: "normal", name: "Normal" }
+    ].forEach((d) => {
+      const opt = densitySelect.createEl("option", { text: d.name, value: d.id });
+      if ((this.data.settings.density || "compact") === d.id) opt.selected = true;
+    });
+    densitySelect.addEventListener("change", async () => {
+      this.data.settings.density = densitySelect.value;
+      await this.callbacks.onSettingChange();
+    });
+    const autoFitGroup = row2.createDiv({ cls: "toolbar-group" });
+    const autoFitCheck = autoFitGroup.createEl("input", { type: "checkbox", cls: "notesheet-checkbox" });
+    autoFitCheck.checked = this.data.settings.autoFitPage !== false;
+    const autoFitLabel = autoFitGroup.createSpan({ text: "Fit Page", cls: "checkbox-label" });
+    autoFitCheck.title = "Automatically scale cards so each page fits cleanly on 1 printed sheet";
+    autoFitLabel.title = autoFitCheck.title;
+    autoFitCheck.addEventListener("change", async () => {
+      this.data.settings.autoFitPage = autoFitCheck.checked;
+      await this.callbacks.onSettingChange();
+    });
+    autoFitLabel.addEventListener("click", () => {
+      autoFitCheck.checked = !autoFitCheck.checked;
+      autoFitCheck.dispatchEvent(new Event("change"));
     });
     const paperGroup = row2.createDiv({ cls: "toolbar-group" });
     paperGroup.createSpan({ text: "Paper:", cls: "group-label" });
@@ -1193,8 +1239,12 @@ var NotesheetCard = class {
     );
     const stripCodeActions = () => {
       bodyEl.querySelectorAll(
-        'pre button, .copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, [aria-label*="copy" i], [title*="copy" i]'
-      ).forEach((el) => el.remove());
+        'pre button, .copy-code-button, button.copy-code-button, div.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, pre [class*="copy" i], [aria-label*="copy" i], [title*="copy" i], div[aria-label*="copy" i]'
+      ).forEach((el) => {
+        if (el.tagName === "BUTTON" || el.classList.contains("copy-code-button") || el.classList.contains("code-block-action") || el.getAttribute("aria-label")?.toLowerCase().includes("copy") || !el.classList.contains("notesheet-card-body")) {
+          el.remove();
+        }
+      });
     };
     if (typeof MutationObserver !== "undefined") {
       const observer = new MutationObserver(() => {
@@ -1838,6 +1888,8 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     const container = this.containerEl.children[1];
     container.empty();
     container.addClass("notesheet-view-root");
+    container.removeClass("density-compact", "density-normal");
+    container.addClass(`density-${this.data.settings.density || "compact"}`);
     container.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
     container.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
     const toolbar = new NotesheetToolbar(this.app, this.data, this.activeTab, {
@@ -1846,6 +1898,8 @@ var NotesheetView = class extends import_obsidian10.ItemView {
         this.updatePageTabVisibility(pagesWrapper);
       },
       onSettingChange: async () => {
+        container.removeClass("density-compact", "density-normal");
+        container.addClass(`density-${this.data.settings.density || "compact"}`);
         container.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
         container.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
         await this.saveData();
@@ -2098,22 +2152,86 @@ var NotesheetView = class extends import_obsidian10.ItemView {
         cls: "footer-page-num"
       });
     }
-    const targetHeight = this.data.settings.pageSize === "a4" ? 1123 : 1056;
-    const checkOverflow = () => {
-      if (pageSheet.scrollHeight > targetHeight + 10) {
-        pageSheet.classList.add("is-overflowing");
-      } else {
-        pageSheet.classList.remove("is-overflowing");
-      }
+    const runFit = () => {
+      this.updatePageFit(pageSheet);
     };
     if (typeof ResizeObserver !== "undefined") {
+      let rAF = null;
       const observer = new ResizeObserver(() => {
-        checkOverflow();
+        if (rAF) cancelAnimationFrame(rAF);
+        rAF = requestAnimationFrame(() => {
+          runFit();
+        });
       });
       observer.observe(pageSheet);
       this.pageObservers.push(observer);
     }
-    setTimeout(checkOverflow, 200);
+    setTimeout(runFit, 100);
+    setTimeout(runFit, 300);
+  }
+  updatePageFit(pageSheet) {
+    const grid = pageSheet.querySelector(".notesheet-columns-grid");
+    if (!grid) return;
+    const headerEl = pageSheet.querySelector(".notesheet-page-header");
+    const footerEl = pageSheet.querySelector(".notesheet-page-footer");
+    const statsEl = pageSheet.querySelector(".page-stats");
+    const isA4 = this.data.settings.pageSize === "a4";
+    const paperHeight = isA4 ? 1123 : 1056;
+    const marginPx = this.data.settings.margins === "tight" ? 19.2 : this.data.settings.margins === "normal" ? 48 : 28.8;
+    const headerH = headerEl ? headerEl.offsetHeight || 30 : 0;
+    const footerH = footerEl ? footerEl.offsetHeight || 24 : 0;
+    const availableHeight = paperHeight - marginPx * 2 - headerH - footerH - 6;
+    const cols = Array.from(grid.querySelectorAll(".notesheet-column"));
+    if (cols.length === 0) return;
+    const currentZoom = parseFloat(grid.style.zoom || "1.0");
+    let maxColH = 0;
+    for (const col of cols) {
+      const h = col.scrollHeight / currentZoom;
+      if (h > maxColH) maxColH = h;
+    }
+    const itemCount = cols.reduce((acc, c) => acc + c.querySelectorAll(".notesheet-card").length, 0);
+    const autoFit = this.data.settings.autoFitPage !== false;
+    if (autoFit && maxColH > availableHeight) {
+      const targetScale = Math.max(0.65, Math.min(1, availableHeight / maxColH));
+      const scaleStr = targetScale.toFixed(3);
+      if (grid.style.zoom !== scaleStr) {
+        grid.style.zoom = scaleStr;
+      }
+      pageSheet.classList.remove("is-overflowing");
+      if (statsEl) {
+        statsEl.setText(`${itemCount} cards \u2022 ${(targetScale * 100).toFixed(0)}% fit`);
+        statsEl.removeClass("overflow-warn");
+        statsEl.addClass("fit-active");
+      }
+    } else if (autoFit) {
+      if (grid.style.zoom !== "1") {
+        grid.style.zoom = "1";
+      }
+      pageSheet.classList.remove("is-overflowing");
+      if (statsEl) {
+        statsEl.setText(`${itemCount} card${itemCount !== 1 ? "s" : ""}`);
+        statsEl.removeClass("overflow-warn", "fit-active");
+      }
+    } else {
+      if (grid.style.zoom !== "1") {
+        grid.style.zoom = "1";
+      }
+      if (maxColH > availableHeight + 5) {
+        pageSheet.classList.add("is-overflowing");
+        if (statsEl) {
+          const overflowPx = Math.round(maxColH - availableHeight);
+          statsEl.setText(`${itemCount} cards \u2022 \u26A0\uFE0F Overflows page (+${overflowPx}px)`);
+          statsEl.addClass("overflow-warn");
+          statsEl.removeClass("fit-active");
+        }
+      } else {
+        pageSheet.classList.remove("is-overflowing");
+        if (statsEl) {
+          statsEl.setText(`${itemCount} card${itemCount !== 1 ? "s" : ""}`);
+          statsEl.removeClass("overflow-warn", "fit-active");
+        }
+      }
+    }
   }
   async promptAddCard() {
     const targetPageId = this.activeTab === "back" ? "back" : "front";
@@ -2135,7 +2253,9 @@ var NotesheetView = class extends import_obsidian10.ItemView {
   }
   setupPrintContainer() {
     this.cleanPrintContainer();
-    const printContainer = document.body.createDiv({ cls: "print notesheet-print-container" });
+    const printContainer = document.body.createDiv({
+      cls: `print notesheet-print-container density-${this.data.settings.density || "compact"}`
+    });
     printContainer.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
     const marginInches = this.data.settings.margins === "tight" ? "0.2in" : this.data.settings.margins === "normal" ? "0.5in" : "0.25in";
@@ -2145,18 +2265,28 @@ var NotesheetView = class extends import_obsidian10.ItemView {
     document.head.appendChild(dynamicStyle);
     const pageEls = this.contentEl.querySelectorAll(".notesheet-page-sheet");
     pageEls.forEach((pageEl) => {
+      const origGrid = pageEl.querySelector(".notesheet-columns-grid");
       const clone = pageEl.cloneNode(true);
       clone.classList.remove("tab-hidden");
       clone.classList.remove("is-overflowing");
       clone.querySelectorAll(
-        ".copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active"
-      ).forEach((el) => el.remove());
+        'pre button, .copy-code-button, button.copy-code-button, div.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, [aria-label*="copy" i], [title*="copy" i], [class*="copy" i], .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active'
+      ).forEach((el) => {
+        if (el.tagName === "BUTTON" || el.classList.contains("copy-code-button") || el.classList.contains("code-block-action") || el.getAttribute("aria-label")?.toLowerCase().includes("copy") || !el.classList.contains("notesheet-card-body")) {
+          el.remove();
+        }
+      });
       clone.querySelectorAll(".notesheet-card-header").forEach((header) => {
         if (!header.querySelector(".notesheet-card-title") || header.textContent?.trim() === "") {
           header.remove();
         }
       });
+      const cloneGrid = clone.querySelector(".notesheet-columns-grid");
+      if (origGrid && cloneGrid && origGrid.style.zoom) {
+        cloneGrid.style.zoom = origGrid.style.zoom;
+      }
       printContainer.appendChild(clone);
+      this.updatePageFit(clone);
     });
     return printContainer;
   }
@@ -2238,6 +2368,21 @@ var NotesheetSettingTab = class extends import_obsidian11.PluginSettingTab {
       dd.setValue(this.plugin.settings.defaultMargins);
       dd.onChange(async (val) => {
         this.plugin.settings.defaultMargins = val;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian11.Setting(containerEl).setName("Default Density").setDesc("Compact spacing optimizes card and code block density for exam cheat sheets").addDropdown((dd) => {
+      dd.addOption("compact", "Compact (Cheat Sheet)");
+      dd.addOption("normal", "Normal (Spacious)");
+      dd.setValue(this.plugin.settings.defaultDensity || "compact");
+      dd.onChange(async (val) => {
+        this.plugin.settings.defaultDensity = val;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian11.Setting(containerEl).setName("Default Auto-Fit to Page").setDesc("Automatically scale cards proportionally so each sheet fits on exactly 1 printed page without spilling").addToggle((toggle) => {
+      toggle.setValue(this.plugin.settings.defaultAutoFitPage !== false).onChange(async (val) => {
+        this.plugin.settings.defaultAutoFitPage = val;
         await this.plugin.saveSettings();
       });
     });

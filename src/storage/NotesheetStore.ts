@@ -46,6 +46,12 @@ ${jsonStr}
             if (parsed.settings.showCategoryTitles === undefined) {
               parsed.settings.showCategoryTitles = true;
             }
+            if (parsed.settings.density === undefined) {
+              parsed.settings.density = 'compact';
+            }
+            if (parsed.settings.autoFitPage === undefined) {
+              parsed.settings.autoFitPage = true;
+            }
           }
 
           // Clean up titles of any legacy formatting or icon shortcodes
@@ -94,8 +100,16 @@ ${jsonStr}
         if (!parsed.categories || !Array.isArray(parsed.categories)) {
           parsed.categories = [...DEFAULT_CATEGORIES];
         }
-        if (parsed.settings && parsed.settings.showCategoryTitles === undefined) {
-          parsed.settings.showCategoryTitles = true;
+        if (parsed.settings) {
+          if (parsed.settings.showCategoryTitles === undefined) {
+            parsed.settings.showCategoryTitles = true;
+          }
+          if (parsed.settings.density === undefined) {
+            parsed.settings.density = 'compact';
+          }
+          if (parsed.settings.autoFitPage === undefined) {
+            parsed.settings.autoFitPage = true;
+          }
         }
         return parsed;
       }

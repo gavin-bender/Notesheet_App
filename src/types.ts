@@ -30,6 +30,8 @@ export interface NotesheetSettings {
   fontSize: number;        // pt size: 6.0 - 12.0
   lineHeight: number;      // 1.0 - 1.5
   margins: 'tight' | 'compact' | 'normal'; // tight: 0.2in, compact: 0.3in, normal: 0.5in
+  density?: 'compact' | 'normal';          // Content density: compact (exam cheat sheet) vs normal
+  autoFitPage?: boolean;                   // Automatically scale content to fit cleanly on 1 page per sheet
   showBorders: boolean;    // show card border boxes
   showCardTitles: boolean; // show title header on cards
   showSourceLinks: boolean;// show link back to source note
@@ -52,6 +54,8 @@ export interface PluginSettings {
   defaultPageSize: 'letter' | 'a4';
   defaultOrientation: 'portrait' | 'landscape';
   defaultMargins: 'tight' | 'compact' | 'normal';
+  defaultDensity: 'compact' | 'normal';
+  defaultAutoFitPage: boolean;
   defaultFolder: string;
   activeNotesheetPath: string;
   confirmCardDelete: boolean;
@@ -72,6 +76,8 @@ export const DEFAULT_NOTESHEET_SETTINGS: NotesheetSettings = {
   fontSize: 8.5,
   lineHeight: 1.25,
   margins: 'compact',
+  density: 'compact',
+  autoFitPage: true,
   showBorders: true,
   showCardTitles: true,
   showSourceLinks: true,
@@ -85,6 +91,8 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   defaultPageSize: 'letter',
   defaultOrientation: 'portrait',
   defaultMargins: 'compact',
+  defaultDensity: 'compact',
+  defaultAutoFitPage: true,
   defaultFolder: '',
   activeNotesheetPath: '',
   confirmCardDelete: false,

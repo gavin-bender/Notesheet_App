@@ -161,6 +161,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass('notesheet-view-root');
+    container.removeClass('density-compact', 'density-normal');
+    container.addClass(`density-${this.data.settings.density || 'compact'}`);
 
     // Dynamic CSS variables for typography and density
     container.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
@@ -173,6 +175,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         this.updatePageTabVisibility(pagesWrapper);
       },
       onSettingChange: async () => {
+        container.removeClass('density-compact', 'density-normal');
+        container.addClass(`density-${this.data.settings.density || 'compact'}`);
         container.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
         container.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
         await this.saveData();
@@ -485,24 +489,94 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       });
     }
 
-    // Observe physical page overflow to alert user when cards exceed 1-page paper height
-    const targetHeight = this.data.settings.pageSize === 'a4' ? 1123 : 1056;
-    const checkOverflow = () => {
-      if (pageSheet.scrollHeight > targetHeight + 10) {
-        pageSheet.classList.add('is-overflowing');
-      } else {
-        pageSheet.classList.remove('is-overflowing');
-      }
+    // Observe page resizing to keep scale and page boundaries strictly WYSIWYG
+    const runFit = () => {
+      this.updatePageFit(pageSheet);
     };
 
     if (typeof ResizeObserver !== 'undefined') {
+      let rAF: number | null = null;
       const observer = new ResizeObserver(() => {
-        checkOverflow();
+        if (rAF) cancelAnimationFrame(rAF);
+        rAF = requestAnimationFrame(() => {
+          runFit();
+        });
       });
       observer.observe(pageSheet);
       this.pageObservers.push(observer);
     }
-    setTimeout(checkOverflow, 200);
+    setTimeout(runFit, 100);
+    setTimeout(runFit, 300);
+  }
+
+  public updatePageFit(pageSheet: HTMLElement): void {
+    const grid = pageSheet.querySelector<HTMLElement>('.notesheet-columns-grid');
+    if (!grid) return;
+    const headerEl = pageSheet.querySelector<HTMLElement>('.notesheet-page-header');
+    const footerEl = pageSheet.querySelector<HTMLElement>('.notesheet-page-footer');
+    const statsEl = pageSheet.querySelector<HTMLElement>('.page-stats');
+
+    const isA4 = this.data.settings.pageSize === 'a4';
+    const paperHeight = isA4 ? 1123 : 1056;
+    const marginPx = this.data.settings.margins === 'tight' ? 19.2 : this.data.settings.margins === 'normal' ? 48 : 28.8;
+    const headerH = headerEl ? headerEl.offsetHeight || 30 : 0;
+    const footerH = footerEl ? footerEl.offsetHeight || 24 : 0;
+    const availableHeight = paperHeight - (marginPx * 2) - headerH - footerH - 6;
+
+    const cols = Array.from(grid.querySelectorAll<HTMLElement>('.notesheet-column'));
+    if (cols.length === 0) return;
+
+    const currentZoom = parseFloat(grid.style.zoom || '1.0');
+    let maxColH = 0;
+    for (const col of cols) {
+      const h = col.scrollHeight / currentZoom;
+      if (h > maxColH) maxColH = h;
+    }
+
+    const itemCount = cols.reduce((acc, c) => acc + c.querySelectorAll('.notesheet-card').length, 0);
+    const autoFit = this.data.settings.autoFitPage !== false;
+
+    if (autoFit && maxColH > availableHeight) {
+      const targetScale = Math.max(0.65, Math.min(1.0, availableHeight / maxColH));
+      const scaleStr = targetScale.toFixed(3);
+      if (grid.style.zoom !== scaleStr) {
+        grid.style.zoom = scaleStr;
+      }
+      pageSheet.classList.remove('is-overflowing');
+      if (statsEl) {
+        statsEl.setText(`${itemCount} cards • ${(targetScale * 100).toFixed(0)}% fit`);
+        statsEl.removeClass('overflow-warn');
+        statsEl.addClass('fit-active');
+      }
+    } else if (autoFit) {
+      if (grid.style.zoom !== '1') {
+        grid.style.zoom = '1';
+      }
+      pageSheet.classList.remove('is-overflowing');
+      if (statsEl) {
+        statsEl.setText(`${itemCount} card${itemCount !== 1 ? 's' : ''}`);
+        statsEl.removeClass('overflow-warn', 'fit-active');
+      }
+    } else {
+      if (grid.style.zoom !== '1') {
+        grid.style.zoom = '1';
+      }
+      if (maxColH > availableHeight + 5) {
+        pageSheet.classList.add('is-overflowing');
+        if (statsEl) {
+          const overflowPx = Math.round(maxColH - availableHeight);
+          statsEl.setText(`${itemCount} cards • ⚠️ Overflows page (+${overflowPx}px)`);
+          statsEl.addClass('overflow-warn');
+          statsEl.removeClass('fit-active');
+        }
+      } else {
+        pageSheet.classList.remove('is-overflowing');
+        if (statsEl) {
+          statsEl.setText(`${itemCount} card${itemCount !== 1 ? 's' : ''}`);
+          statsEl.removeClass('overflow-warn', 'fit-active');
+        }
+      }
+    }
   }
 
   private async promptAddCard(): Promise<void> {
@@ -538,7 +612,9 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
   public setupPrintContainer(): HTMLElement {
     this.cleanPrintContainer();
-    const printContainer = document.body.createDiv({ cls: 'print notesheet-print-container' });
+    const printContainer = document.body.createDiv({
+      cls: `print notesheet-print-container density-${this.data.settings.density || 'compact'}`
+    });
     printContainer.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
 
@@ -551,14 +627,19 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
     const pageEls = this.contentEl.querySelectorAll<HTMLElement>('.notesheet-page-sheet');
     pageEls.forEach((pageEl) => {
+      const origGrid = pageEl.querySelector<HTMLElement>('.notesheet-columns-grid');
       const clone = pageEl.cloneNode(true) as HTMLElement;
       clone.classList.remove('tab-hidden');
       clone.classList.remove('is-overflowing');
 
       // Strip non-print controls (copy buttons, edit forms, drag handles, buttons)
       clone.querySelectorAll(
-        '.copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active'
-      ).forEach((el) => el.remove());
+        'pre button, .copy-code-button, button.copy-code-button, div.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, [aria-label*="copy" i], [title*="copy" i], [class*="copy" i], .notesheet-card-actions, .notesheet-card-drag-handle, .notesheet-card-source-badge, .notesheet-card-category-pill, .notesheet-card-edit-wrapper, .drag-target-active'
+      ).forEach((el) => {
+        if (el.tagName === 'BUTTON' || el.classList.contains('copy-code-button') || el.classList.contains('code-block-action') || el.getAttribute('aria-label')?.toLowerCase().includes('copy') || !el.classList.contains('notesheet-card-body')) {
+          el.remove();
+        }
+      });
 
       // If card header is now empty (no title), remove it so it takes zero space
       clone.querySelectorAll('.notesheet-card-header').forEach((header) => {
@@ -567,7 +648,14 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         }
       });
 
+      const cloneGrid = clone.querySelector<HTMLElement>('.notesheet-columns-grid');
+      if (origGrid && cloneGrid && origGrid.style.zoom) {
+        cloneGrid.style.zoom = origGrid.style.zoom;
+      }
+
       printContainer.appendChild(clone);
+      // Run fit calculation directly on the print clone to ensure exact 1-page fit
+      this.updatePageFit(clone);
     });
 
     return printContainer;

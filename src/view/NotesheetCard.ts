@@ -238,8 +238,12 @@ export class NotesheetCard {
 
     const stripCodeActions = () => {
       bodyEl.querySelectorAll(
-        'pre button, .copy-code-button, button.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, [aria-label*="copy" i], [title*="copy" i]'
-      ).forEach((el) => el.remove());
+        'pre button, .copy-code-button, button.copy-code-button, div.copy-code-button, .code-block-action, .copy-code-button-text, .code-block-flair, pre [class*="copy" i], [aria-label*="copy" i], [title*="copy" i], div[aria-label*="copy" i]'
+      ).forEach((el) => {
+        if (el.tagName === 'BUTTON' || el.classList.contains('copy-code-button') || el.classList.contains('code-block-action') || el.getAttribute('aria-label')?.toLowerCase().includes('copy') || !el.classList.contains('notesheet-card-body')) {
+          el.remove();
+        }
+      });
     };
 
     if (typeof MutationObserver !== 'undefined') {

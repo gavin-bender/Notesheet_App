@@ -88,6 +88,31 @@ export class NotesheetSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName('Default Density')
+      .setDesc('Compact spacing optimizes card and code block density for exam cheat sheets')
+      .addDropdown(dd => {
+        dd.addOption('compact', 'Compact (Cheat Sheet)');
+        dd.addOption('normal', 'Normal (Spacious)');
+        dd.setValue(this.plugin.settings.defaultDensity || 'compact');
+        dd.onChange(async (val) => {
+          this.plugin.settings.defaultDensity = val as any;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Default Auto-Fit to Page')
+      .setDesc('Automatically scale cards proportionally so each sheet fits on exactly 1 printed page without spilling')
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.plugin.settings.defaultAutoFitPage !== false)
+          .onChange(async (val) => {
+            this.plugin.settings.defaultAutoFitPage = val;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
       .setName('Notesheet Folder')
       .setDesc('Folder in vault to store newly created notesheet files (leave empty for vault root)')
       .addText(text => {

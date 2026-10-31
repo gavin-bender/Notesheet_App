@@ -310,6 +310,18 @@
   border-radius: 10px;
 }
 
+.page-stats.fit-active {
+  color: var(--interactive-accent, #7057ff);
+  font-weight: 600;
+  background: rgba(112, 87, 255, 0.12);
+}
+
+.page-stats.overflow-warn {
+  color: var(--text-error, #e53935);
+  font-weight: 700;
+  background: rgba(229, 57, 53, 0.12);
+}
+
 .notesheet-page-footer {
   display: flex;
   justify-content: space-between;
@@ -411,6 +423,149 @@
 
 .notesheet-card:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ========================================================
+   DENSITY MODES (Compact vs Normal) - Screen Preview
+   ======================================================== */
+
+/* Compact Density Mode (Cheat Sheet) */
+.density-compact .notesheet-columns-grid {
+  gap: 4px;
+}
+
+.density-compact .notesheet-column {
+  gap: 4px;
+}
+
+.density-compact .notesheet-card {
+  line-height: 1.18;
+}
+
+.density-compact .notesheet-card.has-border,
+.density-compact .notesheet-card.no-border {
+  padding: 2.5px 5px;
+}
+
+.density-compact .notesheet-card-header {
+  padding-bottom: 1px;
+  margin-bottom: 2px;
+}
+
+.density-compact .notesheet-card-title {
+  font-size: 0.9em;
+  line-height: 1.15;
+}
+
+.density-compact .notesheet-card-body {
+  line-height: 1.18;
+}
+
+.density-compact .notesheet-card-body p {
+  margin: 1px 0;
+  line-height: 1.18;
+}
+
+.density-compact .notesheet-card-body pre {
+  margin: 2px 0;
+  padding: 2px 4px;
+  line-height: 1.15;
+}
+
+.density-compact .notesheet-card-body pre code,
+.density-compact .notesheet-card-body :not(pre) > code {
+  font-size: calc(var(--notesheet-font-size, 8.5pt) - 1.2pt);
+  line-height: 1.15;
+}
+
+.density-compact .notesheet-card-body ul,
+.density-compact .notesheet-card-body ol {
+  margin: 1px 0;
+  padding-inline-start: 13px;
+}
+
+.density-compact .notesheet-card-body li {
+  margin: 0;
+  line-height: 1.18;
+}
+
+.density-compact .notesheet-card-body table {
+  margin: 1px 0;
+  font-size: 0.85em;
+  line-height: 1.15;
+}
+
+.density-compact .notesheet-card-body th,
+.density-compact .notesheet-card-body td {
+  padding: 0.5px 3px;
+}
+
+.density-compact .notesheet-card-body .math,
+.density-compact .notesheet-card-body .math-block {
+  margin: 1px 0;
+}
+
+.density-compact .notesheet-category-banner {
+  padding: 0 4px;
+  margin: -2.5px -5px 2px -5px;
+  font-size: 7.5pt;
+}
+
+.density-compact .notesheet-page-header {
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.density-compact .notesheet-page-footer {
+  padding-top: 2px;
+  margin-top: 4px;
+  font-size: 7.5pt;
+}
+
+/* Normal Density Mode (Spacious) */
+.density-normal .notesheet-columns-grid {
+  gap: 8px;
+}
+
+.density-normal .notesheet-column {
+  gap: 8px;
+}
+
+.density-normal .notesheet-card.has-border,
+.density-normal .notesheet-card.no-border {
+  padding: 4px 6px;
+}
+
+.density-normal .notesheet-card-header {
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.density-normal .notesheet-card-title {
+  font-size: 1.0em;
+  line-height: 1.25;
+}
+
+.density-normal .notesheet-card-body p {
+  margin: 2px 0;
+  line-height: 1.25;
+}
+
+.density-normal .notesheet-card-body pre {
+  margin: 4px 0;
+  padding: 4px 6px;
+  line-height: 1.25;
+}
+
+.density-normal .notesheet-card-body ul,
+.density-normal .notesheet-card-body ol {
+  margin: 2px 0;
+  padding-inline-start: 16px;
+}
+
+.density-normal .notesheet-card-body li {
+  margin: 1px 0;
+  line-height: 1.25;
 }
 
 .notesheet-card.is-editing {
@@ -658,21 +813,44 @@
 .notesheet-view-root pre button,
 .notesheet-view-root .copy-code-button,
 .notesheet-view-root button.copy-code-button,
+.notesheet-view-root div.copy-code-button,
 .notesheet-view-root .code-block-action,
 .notesheet-view-root .copy-code-button-text,
 .notesheet-view-root .code-block-flair,
+.notesheet-view-root pre [class*="copy" i],
 .notesheet-view-root button[aria-label*="copy" i],
 .notesheet-view-root button[title*="copy" i],
+.notesheet-view-root div[aria-label*="copy" i],
+.notesheet-view-root div[title*="copy" i],
+.notesheet-card .copy-code-button,
+.notesheet-card button.copy-code-button,
+.notesheet-card div.copy-code-button,
+.notesheet-card .code-block-action,
+.notesheet-card .copy-code-button-text,
+.notesheet-card .code-block-flair,
+.notesheet-card pre button,
+.notesheet-card pre .copy-code-button,
+.notesheet-card pre div.copy-code-button,
+.notesheet-card pre [class*="copy" i],
+.notesheet-card [aria-label*="copy" i],
+.notesheet-card [title*="copy" i],
+.notesheet-card div[aria-label*="copy" i],
+.notesheet-card div[title*="copy" i],
 .notesheet-card-body pre button,
 .notesheet-card-body pre .copy-code-button,
+.notesheet-card-body pre div.copy-code-button,
 .notesheet-card-body pre .code-block-action,
 .notesheet-card-body .copy-code-button,
 .notesheet-card-body button.copy-code-button,
+.notesheet-card-body div.copy-code-button,
 .notesheet-card-body .code-block-action,
 .notesheet-card-body .copy-code-button-text,
 .notesheet-card-body .code-block-flair,
+.notesheet-card-body pre [class*="copy" i],
 .notesheet-card-body button[aria-label*="copy" i],
-.notesheet-card-body button[title*="copy" i] {
+.notesheet-card-body button[title*="copy" i],
+.notesheet-card-body div[aria-label*="copy" i],
+.notesheet-card-body div[title*="copy" i] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
@@ -683,6 +861,9 @@
   border: none !important;
   pointer-events: none !important;
   position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+}
 }
 
 /* Card Body (Markdown Rendered) */
@@ -1292,14 +1473,115 @@
     color: #000000 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    border: 1px solid #d0d7de !important;
     border-radius: 4px !important;
-    padding: 4px 6px !important;
     box-shadow: none !important;
+  }
+
+  .notesheet-print-container .notesheet-card.has-border {
+    border: 1px solid #d0d7de !important;
+    padding: 4px 6px !important;
+  }
+
+  .notesheet-print-container .notesheet-card.no-border {
+    border: none !important;
+    border-left: 2px solid #555555 !important;
+    padding: 4px 6px !important;
   }
 
   .notesheet-print-container .notesheet-card.has-category {
     border-left: 3.5pt solid var(--card-cat-color) !important;
+  }
+
+  /* Compact Density in Print */
+  .notesheet-print-container.density-compact .notesheet-columns-grid,
+  .notesheet-print-container.density-compact .notesheet-column {
+    gap: 4px !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card.has-border,
+  .notesheet-print-container.density-compact .notesheet-card.no-border {
+    padding: 2.5px 5px !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-header {
+    padding-bottom: 1px !important;
+    margin-bottom: 2px !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-title {
+    font-size: calc(var(--notesheet-font-size, 8.5pt) * 0.9) !important;
+    line-height: 1.15 !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-body {
+    line-height: 1.18 !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-body p {
+    margin: 1px 0 !important;
+    line-height: 1.18 !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-body pre {
+    margin: 2px 0 !important;
+    padding: 2px 4px !important;
+    line-height: 1.15 !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-body code,
+  .notesheet-print-container.density-compact .notesheet-card-body pre code {
+    font-size: calc(var(--notesheet-font-size, 8.5pt) - 1.2pt) !important;
+    line-height: 1.15 !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-body ul,
+  .notesheet-print-container.density-compact .notesheet-card-body ol {
+    margin: 1px 0 !important;
+    padding-inline-start: 13px !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-card-body li {
+    margin: 0 !important;
+    line-height: 1.18 !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-category-banner {
+    padding: 0 4px !important;
+    margin: -2.5px -5px 2px -5px !important;
+    font-size: 7.5pt !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-page-header {
+    padding-bottom: 2px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .notesheet-print-container.density-compact .notesheet-page-footer {
+    padding-top: 2px !important;
+    margin-top: 4px !important;
+    font-size: 7.5pt !important;
+  }
+
+  /* Normal Density in Print */
+  .notesheet-print-container.density-normal .notesheet-columns-grid,
+  .notesheet-print-container.density-normal .notesheet-column {
+    gap: 8px !important;
+  }
+
+  .notesheet-print-container.density-normal .notesheet-card.has-border,
+  .notesheet-print-container.density-normal .notesheet-card.no-border {
+    padding: 4px 6px !important;
+  }
+
+  .notesheet-print-container.density-normal .notesheet-card-body p {
+    margin: 2px 0 !important;
+    line-height: 1.25 !important;
+  }
+
+  .notesheet-print-container.density-normal .notesheet-card-body pre {
+    margin: 4px 0 !important;
+    padding: 4px 6px !important;
+    line-height: 1.25 !important;
   }
 
   .notesheet-print-container .notesheet-category-banner {

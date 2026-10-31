@@ -174,6 +174,38 @@ export class NotesheetToolbar {
       await this.callbacks.onSettingChange();
     });
 
+    // Density Selector (Compact vs Normal)
+    const densityGroup = row2.createDiv({ cls: 'toolbar-group' });
+    densityGroup.createSpan({ text: 'Density:', cls: 'group-label' });
+    const densitySelect = densityGroup.createEl('select', { cls: 'notesheet-select' });
+    [
+      { id: 'compact', name: 'Compact' },
+      { id: 'normal', name: 'Normal' }
+    ].forEach(d => {
+      const opt = densitySelect.createEl('option', { text: d.name, value: d.id });
+      if ((this.data.settings.density || 'compact') === d.id) opt.selected = true;
+    });
+    densitySelect.addEventListener('change', async () => {
+      this.data.settings.density = densitySelect.value as any;
+      await this.callbacks.onSettingChange();
+    });
+
+    // Toggle Auto-Fit to Page (Ensures cards fit cleanly onto 1 page per sheet)
+    const autoFitGroup = row2.createDiv({ cls: 'toolbar-group' });
+    const autoFitCheck = autoFitGroup.createEl('input', { type: 'checkbox', cls: 'notesheet-checkbox' });
+    autoFitCheck.checked = this.data.settings.autoFitPage !== false;
+    const autoFitLabel = autoFitGroup.createSpan({ text: 'Fit Page', cls: 'checkbox-label' });
+    autoFitCheck.title = 'Automatically scale cards so each page fits cleanly on 1 printed sheet';
+    autoFitLabel.title = autoFitCheck.title;
+    autoFitCheck.addEventListener('change', async () => {
+      this.data.settings.autoFitPage = autoFitCheck.checked;
+      await this.callbacks.onSettingChange();
+    });
+    autoFitLabel.addEventListener('click', () => {
+      autoFitCheck.checked = !autoFitCheck.checked;
+      autoFitCheck.dispatchEvent(new Event('change'));
+    });
+
     // Paper Size
     const paperGroup = row2.createDiv({ cls: 'toolbar-group' });
     paperGroup.createSpan({ text: 'Paper:', cls: 'group-label' });
