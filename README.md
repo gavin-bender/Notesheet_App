@@ -6,7 +6,11 @@ An exam notesheet and cheat sheet organizer for [Obsidian](https://obsidian.md).
 
 ## ✨ Features
 
-- **2 Pages by Default (Front & Back)**: Designed specifically for exams that allow "one sheet of paper, front and back". Easily switch between Page 1 (Front), Page 2 (Back), or Dual View.
+- **2 Pages by Default (Front & Back)**: Designed specifically for exams that allow "one sheet of paper, front and back" or "one 3x5 notecard". Easily switch between Page 1 (Front), Page 2 (Back), or Dual View.
+- **Support for 3x5 Notecards & Full Sheets**:
+  - Full support for **3" x 5" index notecards** (both Landscape and Portrait) as well as standard **US Letter** and **A4** sheets.
+  - Dedicated command `Notesheet: Create new 3x5 Notecard` to instantly start a 3x5 index card cheat sheet.
+  - WYSIWYG card boundaries, custom tight margins (0.1in / 0.15in / 0.25in), micro font sizes (down to 5pt), and exact 3x5 printing via CSS `@page { size: 5in 3in; }`.
 - **Color-Coded Categories**:
   - Assign categories (e.g. *Formulas*, *Definitions*, *Theorems*, *Examples*, *Constants*, or custom ones) to any card.
   - Changes the card's accent color (top border stripe and color badges) for instant visual scanning.
@@ -54,18 +58,19 @@ There are two easy ways to populate your notesheet:
 - **Jump to Note**: Click the source badge pill on any card header (e.g. `📄 PHYS240`) to open that note and jump to the block.
 
 ### 4. Customizing Exam Density & Layout
+- **Paper & Format**: Switch between **US Letter**, **A4**, or **3" x 5" Card**.
+- **Orientation**: Switch between **Landscape** (recommended for 3x5 notecards) and **Portrait**.
 - **Page Tabs**: Toggle between **Page 1: Front**, **Page 2: Back**, or **Dual View**.
-- **Columns**: Select **2 cols**, **3 cols**, or **4 cols** to organize your formulas.
-- **Font Size**: Use the font size selector (e.g. **7.5 pt** or **8 pt**) to maximize space.
-- **Borders**: Toggle card borders on or off.
+- **Columns**: Select **1 col**, **2 cols**, **3 cols**, or **4 cols** to organize your formulas.
+- **Font Size**: Use the font size selector (from **5 pt** to **12 pt**) to maximize space.
+- **Borders & Background**: Toggle card border boxes and subtle background shading.
 - **Reordering**: Drag and drop cards between columns or use the `↑` / `↓` / `→ Back` buttons.
 
 ### 5. Printing for the Exam
 1. Click the **Print / PDF** button on the toolbar.
 2. The print preview dialog opens with:
-   - Page 1 printing the **Front** page.
-   - Page 2 printing the **Back** page.
-   - Exact paper size (US Letter or A4) with tight margins.
+   - Front and Back pages formatted to the exact paper dimensions (US Letter, A4, or 3" x 5" notecards).
+   - Strict pagination and tight exam margins.
 3. Select your printer or choose "Save as PDF".
 
 ---

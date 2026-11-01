@@ -34,12 +34,32 @@ export class PrintPreviewModal extends Modal {
     // Left side: Title & Document Metadata
     const headerLeft = header.createDiv({ cls: 'preview-header-left' });
     headerLeft.createSpan({ cls: 'preview-modal-title', text: 'Print Preview' });
-    const paperName = this.data.settings.pageSize === 'a4' ? 'A4' : 'US Letter';
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === 'card3x5' ? 'landscape' : 'portrait');
+    const isCard = pageSize === 'card3x5';
+    const orientLabel = orientation === 'landscape' ? 'Landscape' : 'Portrait';
+
+    let paperName = 'US Letter';
+    if (isCard) {
+      paperName = `3" x 5" Notecard (${orientLabel})`;
+    } else if (pageSize === 'a4') {
+      paperName = `A4 (${orientLabel})`;
+    } else {
+      paperName = `US Letter (${orientLabel})`;
+    }
+
     const densityName = (this.data.settings.density || 'compact') === 'compact' ? 'Compact' : 'Normal';
-    const marginsName = this.data.settings.margins === 'tight' ? 'Tight (0.2in)' : this.data.settings.margins === 'normal' ? 'Normal (0.5in)' : 'Compact (0.3in)';
+    let marginsName = 'Compact (0.3in)';
+    if (isCard) {
+      marginsName = this.data.settings.margins === 'tight' ? 'Tight (0.1in)' : this.data.settings.margins === 'normal' ? 'Normal (0.25in)' : 'Compact (0.15in)';
+    } else {
+      marginsName = this.data.settings.margins === 'tight' ? 'Tight (0.2in)' : this.data.settings.margins === 'normal' ? 'Normal (0.5in)' : 'Compact (0.3in)';
+    }
+
+    const unitDesc = isCard ? '2 Sides (Front & Back)' : '2 Pages (Front & Back)';
     headerLeft.createSpan({
       cls: 'preview-modal-info',
-      text: `${this.data.title} • 2 Pages (Front & Back) • ${paperName} • ${marginsName} • ${densityName} Density`
+      text: `${this.data.title} • ${unitDesc} • ${paperName} • ${marginsName} • ${densityName} Density`
     });
 
     // Right side: Zoom, Print & Close Controls
@@ -100,7 +120,7 @@ export class PrintPreviewModal extends Modal {
 
     // Inner container holding both pages
     this.previewWrapperEl = viewerBackdrop.createDiv({
-      cls: `notesheet-preview-container notesheet-print-container density-${this.data.settings.density || 'compact'}`
+      cls: `notesheet-preview-container notesheet-print-container density-${this.data.settings.density || 'compact'} paper-${pageSize} orientation-${orientation}`
     });
     this.previewWrapperEl.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
     this.previewWrapperEl.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
@@ -111,7 +131,9 @@ export class PrintPreviewModal extends Modal {
       const pageWrapper = this.previewWrapperEl.createDiv({ cls: 'notesheet-preview-page-wrapper' });
       pageWrapper.createDiv({
         cls: 'notesheet-preview-sheet-tag',
-        text: idx === 0 ? 'Page 1 — Front' : 'Page 2 — Back'
+        text: isCard
+          ? (idx === 0 ? 'Card 1 — Front' : 'Card 2 — Back')
+          : (idx === 0 ? 'Page 1 — Front' : 'Page 2 — Back')
       });
       pageWrapper.appendChild(pageEl);
       this.view.updatePageFit(pageEl);
@@ -128,9 +150,22 @@ export class PrintPreviewModal extends Modal {
   private autoFitZoom(labelEl?: HTMLElement) {
     if (!this.previewWrapperEl || !this.contentEl) return;
     const availableWidth = this.contentEl.clientWidth - 80;
-    const paperWidth = this.data.settings.pageSize === 'a4' ? 794 : 816;
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === 'card3x5' ? 'landscape' : 'portrait');
+    const isLandscape = orientation === 'landscape';
+
+    let paperWidth = 816;
+    if (pageSize === 'a4') {
+      paperWidth = isLandscape ? 1123 : 794;
+    } else if (pageSize === 'card3x5') {
+      paperWidth = isLandscape ? 480 : 288;
+    } else {
+      paperWidth = isLandscape ? 1056 : 816;
+    }
+
     if (availableWidth > 0) {
-      const idealZoom = Math.min(1.0, Math.max(0.4, (availableWidth / paperWidth) * 0.95));
+      const maxZoom = pageSize === 'card3x5' ? 1.4 : 1.0;
+      const idealZoom = Math.min(maxZoom, Math.max(0.4, (availableWidth / paperWidth) * 0.95));
       this.currentZoom = parseFloat(idealZoom.toFixed(2));
       this.updateZoom(labelEl);
     }

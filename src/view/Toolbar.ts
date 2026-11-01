@@ -155,7 +155,7 @@ export class NotesheetToolbar {
     const fontGroup = row2.createDiv({ cls: 'toolbar-group' });
     fontGroup.createSpan({ text: 'Font Size:', cls: 'group-label' });
     const fontSelect = fontGroup.createEl('select', { cls: 'notesheet-select' });
-    const sizes = [6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 11, 12];
+    const sizes = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 11, 12];
     sizes.forEach(sz => {
       const opt = fontSelect.createEl('option', {
         text: `${sz} pt`,
@@ -169,13 +169,14 @@ export class NotesheetToolbar {
     });
 
     // Margins
+    const isCard = this.data.settings.pageSize === 'card3x5';
     const marginGroup = row2.createDiv({ cls: 'toolbar-group' });
     marginGroup.createSpan({ text: 'Margins:', cls: 'group-label' });
     const marginSelect = marginGroup.createEl('select', { cls: 'notesheet-select' });
     [
-      { id: 'tight', name: 'Tight (0.2in)' },
-      { id: 'compact', name: 'Compact (0.3in)' },
-      { id: 'normal', name: 'Normal (0.5in)' }
+      { id: 'tight', name: isCard ? 'Tight (0.1in)' : 'Tight (0.2in)' },
+      { id: 'compact', name: isCard ? 'Compact (0.15in)' : 'Compact (0.3in)' },
+      { id: 'normal', name: isCard ? 'Normal (0.25in)' : 'Normal (0.5in)' }
     ].forEach(m => {
       const opt = marginSelect.createEl('option', { text: m.name, value: m.id });
       if (this.data.settings.margins === m.id) opt.selected = true;
@@ -223,13 +224,46 @@ export class NotesheetToolbar {
     const paperSelect = paperGroup.createEl('select', { cls: 'notesheet-select' });
     [
       { id: 'letter', name: 'US Letter' },
-      { id: 'a4', name: 'A4' }
+      { id: 'a4', name: 'A4' },
+      { id: 'card3x5', name: '3" x 5" Card' }
     ].forEach(p => {
       const opt = paperSelect.createEl('option', { text: p.name, value: p.id });
       if (this.data.settings.pageSize === p.id) opt.selected = true;
     });
     paperSelect.addEventListener('change', async () => {
-      this.data.settings.pageSize = paperSelect.value as any;
+      const prevSize = this.data.settings.pageSize;
+      const newSize = paperSelect.value as any;
+      this.data.settings.pageSize = newSize;
+
+      // Smart defaults when switching to 3x5 notecard format
+      if (newSize === 'card3x5' && prevSize !== 'card3x5') {
+        if (!this.data.settings.orientation) {
+          this.data.settings.orientation = 'landscape';
+        }
+        if (this.data.settings.columns > 2) {
+          this.data.settings.columns = 1;
+        }
+        if (this.data.settings.fontSize > 8) {
+          this.data.settings.fontSize = 7;
+        }
+      }
+      await this.callbacks.onSettingChange();
+    });
+
+    // Orientation Selector
+    const orientGroup = row2.createDiv({ cls: 'toolbar-group' });
+    orientGroup.createSpan({ text: 'Orientation:', cls: 'group-label' });
+    const orientSelect = orientGroup.createEl('select', { cls: 'notesheet-select' });
+    const currentOrient = this.data.settings.orientation || (this.data.settings.pageSize === 'card3x5' ? 'landscape' : 'portrait');
+    [
+      { id: 'portrait', name: 'Portrait' },
+      { id: 'landscape', name: 'Landscape' }
+    ].forEach(o => {
+      const opt = orientSelect.createEl('option', { text: o.name, value: o.id });
+      if (currentOrient === o.id) opt.selected = true;
+    });
+    orientSelect.addEventListener('change', async () => {
+      this.data.settings.orientation = orientSelect.value as any;
       await this.callbacks.onSettingChange();
     });
 

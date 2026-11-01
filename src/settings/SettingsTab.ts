@@ -51,7 +51,7 @@ export class NotesheetSettingTab extends PluginSettingTab {
       .setDesc('Base font size for notesheet cards in points (pt)')
       .addSlider(slider => {
         slider
-          .setLimits(6, 12, 0.5)
+          .setLimits(5, 12, 0.5)
           .setValue(this.plugin.settings.defaultFontSize)
           .setDynamicTooltip()
           .onChange(async (val) => {
@@ -66,6 +66,7 @@ export class NotesheetSettingTab extends PluginSettingTab {
       .addDropdown(dd => {
         dd.addOption('letter', 'US Letter (8.5" x 11")');
         dd.addOption('a4', 'A4 (210 x 297 mm)');
+        dd.addOption('card3x5', '3" x 5" Notecard (Index Card)');
         dd.setValue(this.plugin.settings.defaultPageSize);
         dd.onChange(async (val) => {
           this.plugin.settings.defaultPageSize = val as any;
@@ -74,12 +75,25 @@ export class NotesheetSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Default Margins')
-      .setDesc('Margins for notesheet pages')
+      .setName('Default Orientation')
+      .setDesc('Orientation for sheets and cards (Landscape is standard for 3x5 notecards)')
       .addDropdown(dd => {
-        dd.addOption('tight', 'Tight (0.2in / 5mm)');
-        dd.addOption('compact', 'Compact (0.3in / 7.5mm)');
-        dd.addOption('normal', 'Normal (0.5in / 12.7mm)');
+        dd.addOption('portrait', 'Portrait');
+        dd.addOption('landscape', 'Landscape');
+        dd.setValue(this.plugin.settings.defaultOrientation || 'portrait');
+        dd.onChange(async (val) => {
+          this.plugin.settings.defaultOrientation = val as any;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Default Margins')
+      .setDesc('Margins for notesheet pages (Tight/Compact recommended for 3x5 notecards)')
+      .addDropdown(dd => {
+        dd.addOption('tight', 'Tight (0.2in / 0.1in card)');
+        dd.addOption('compact', 'Compact (0.3in / 0.15in card)');
+        dd.addOption('normal', 'Normal (0.5in / 0.25in card)');
         dd.setValue(this.plugin.settings.defaultMargins);
         dd.onChange(async (val) => {
           this.plugin.settings.defaultMargins = val as any;

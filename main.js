@@ -58,6 +58,22 @@ var DEFAULT_NOTESHEET_SETTINGS = {
   showPageNumbers: true,
   showCategoryTitles: true
 };
+var DEFAULT_NOTECARD_SETTINGS = {
+  pageSize: "card3x5",
+  orientation: "landscape",
+  columns: 1,
+  fontSize: 7,
+  lineHeight: 1.2,
+  margins: "compact",
+  density: "compact",
+  autoFitPage: true,
+  showBorders: true,
+  showCardBackground: false,
+  showCardTitles: true,
+  showSourceLinks: true,
+  showPageNumbers: true,
+  showCategoryTitles: true
+};
 var DEFAULT_PLUGIN_SETTINGS = {
   defaultColumns: 2,
   defaultFontSize: 8.5,
@@ -71,22 +87,24 @@ var DEFAULT_PLUGIN_SETTINGS = {
   activeNotesheetPath: "",
   confirmCardDelete: false
 };
-function createDefaultNotesheetData(title = "Exam Notesheet") {
+function createDefaultNotesheetData(title = "Exam Notesheet", customSettings) {
+  const isCard = customSettings?.pageSize === "card3x5";
+  const baseSettings = isCard ? DEFAULT_NOTECARD_SETTINGS : DEFAULT_NOTESHEET_SETTINGS;
   return {
     version: 1,
     id: "sheet-" + Date.now().toString(36),
     title,
-    settings: { ...DEFAULT_NOTESHEET_SETTINGS },
+    settings: { ...baseSettings, ...customSettings },
     categories: [...DEFAULT_CATEGORIES],
     pages: [
       {
         id: "front",
-        name: "Front (Page 1)",
+        name: isCard ? "Front (Card 1)" : "Front (Page 1)",
         items: []
       },
       {
         id: "back",
-        name: "Back (Page 2)",
+        name: isCard ? "Back (Card 2)" : "Back (Page 2)",
         items: []
       }
     ]
@@ -104,10 +122,12 @@ var NotesheetStore = class {
    */
   serialize(data) {
     const jsonStr = JSON.stringify(data, null, 2);
+    const orientation = data.settings.orientation || (data.settings.pageSize === "card3x5" ? "landscape" : "portrait");
     return `---
 notesheet: true
 title: ${JSON.stringify(data.title)}
 pageSize: ${data.settings.pageSize}
+orientation: ${orientation}
 columns: ${data.settings.columns}
 fontSize: ${data.settings.fontSize}
 updatedAt: ${(/* @__PURE__ */ new Date()).toISOString()}
@@ -122,28 +142,40 @@ ${jsonStr}
    * Parse notesheet data from file content.
    */
   deserialize(content, fallbackTitle = "Notesheet") {
+    const normalizeSettings = (parsed) => {
+      if (!parsed.categories || !Array.isArray(parsed.categories)) {
+        parsed.categories = [...DEFAULT_CATEGORIES];
+      }
+      if (parsed.settings) {
+        if (parsed.settings.pageSize === "3x5" || parsed.settings.pageSize === "notecard" || parsed.settings.pageSize === "index-card") {
+          parsed.settings.pageSize = "card3x5";
+        }
+        if (!parsed.settings.pageSize) {
+          parsed.settings.pageSize = "letter";
+        }
+        if (!parsed.settings.orientation) {
+          parsed.settings.orientation = parsed.settings.pageSize === "card3x5" ? "landscape" : "portrait";
+        }
+        if (parsed.settings.showCategoryTitles === void 0) {
+          parsed.settings.showCategoryTitles = true;
+        }
+        if (parsed.settings.density === void 0) {
+          parsed.settings.density = "compact";
+        }
+        if (parsed.settings.autoFitPage === void 0) {
+          parsed.settings.autoFitPage = true;
+        }
+        if (parsed.settings.showCardBackground === void 0) {
+          parsed.settings.showCardBackground = false;
+        }
+      }
+    };
     const match = content.match(/```notesheet(?:-data)?\s*\n([\s\S]*?)\n```/);
     if (match && match[1]) {
       try {
         const parsed = JSON.parse(match[1]);
         if (parsed && parsed.pages) {
-          if (!parsed.categories || !Array.isArray(parsed.categories)) {
-            parsed.categories = [...DEFAULT_CATEGORIES];
-          }
-          if (parsed.settings) {
-            if (parsed.settings.showCategoryTitles === void 0) {
-              parsed.settings.showCategoryTitles = true;
-            }
-            if (parsed.settings.density === void 0) {
-              parsed.settings.density = "compact";
-            }
-            if (parsed.settings.autoFitPage === void 0) {
-              parsed.settings.autoFitPage = true;
-            }
-            if (parsed.settings.showCardBackground === void 0) {
-              parsed.settings.showCardBackground = false;
-            }
-          }
+          normalizeSettings(parsed);
           const cleanTitleStr = (t) => {
             if (!t) return "";
             return t.replace(/:[a-zA-Z0-9_-]+:\s*/g, "").replace(/^#{1,6}\s+/, "").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1").replace(/__([^_]+)__/g, "$1").replace(/_([^_]+)_/g, "$1").replace(/`([^`]+)`/g, "$1").replace(/[:\s-]+$/, "").trim();
@@ -172,23 +204,7 @@ ${jsonStr}
     try {
       const parsed = JSON.parse(content);
       if (parsed && parsed.pages) {
-        if (!parsed.categories || !Array.isArray(parsed.categories)) {
-          parsed.categories = [...DEFAULT_CATEGORIES];
-        }
-        if (parsed.settings) {
-          if (parsed.settings.showCategoryTitles === void 0) {
-            parsed.settings.showCategoryTitles = true;
-          }
-          if (parsed.settings.density === void 0) {
-            parsed.settings.density = "compact";
-          }
-          if (parsed.settings.autoFitPage === void 0) {
-            parsed.settings.autoFitPage = true;
-          }
-          if (parsed.settings.showCardBackground === void 0) {
-            parsed.settings.showCardBackground = false;
-          }
-        }
+        normalizeSettings(parsed);
         return parsed;
       }
     } catch {
@@ -198,8 +214,9 @@ ${jsonStr}
   /**
    * Create a new notesheet file in the vault.
    */
-  async createNotesheet(folderPath = "", title = "Exam Notesheet") {
-    const safeTitle = title.replace(/[\\/:"*?<>|]/g, "").trim() || "Exam Notesheet";
+  async createNotesheet(folderPath = "", title = "Exam Notesheet", settings) {
+    const isCard = settings?.pageSize === "card3x5";
+    const safeTitle = title.replace(/[\\/:"*?<>|]/g, "").trim() || (isCard ? "Exam Notecard" : "Exam Notesheet");
     let baseFileName = `${safeTitle}.notesheet.md`;
     let fullPath = folderPath ? (0, import_obsidian.normalizePath)(`${folderPath}/${baseFileName}`) : baseFileName;
     let counter = 1;
@@ -208,10 +225,16 @@ ${jsonStr}
       fullPath = folderPath ? (0, import_obsidian.normalizePath)(`${folderPath}/${baseFileName}`) : baseFileName;
       counter++;
     }
-    const data = createDefaultNotesheetData(title);
+    const data = createDefaultNotesheetData(title, settings);
     const content = this.serialize(data);
     const file = await this.app.vault.create(fullPath, content);
     return file;
+  }
+  /**
+   * Helper to create a 3x5 notecard in the vault.
+   */
+  async createNotecard(folderPath = "", title = "Exam Notecard (3x5)") {
+    return this.createNotesheet(folderPath, title, { pageSize: "card3x5", orientation: "landscape", columns: 1, fontSize: 7 });
   }
   /**
    * Load notesheet data from a TFile.
@@ -682,7 +705,7 @@ var NotesheetToolbar = class {
     const fontGroup = row2.createDiv({ cls: "toolbar-group" });
     fontGroup.createSpan({ text: "Font Size:", cls: "group-label" });
     const fontSelect = fontGroup.createEl("select", { cls: "notesheet-select" });
-    const sizes = [6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 11, 12];
+    const sizes = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 11, 12];
     sizes.forEach((sz) => {
       const opt = fontSelect.createEl("option", {
         text: `${sz} pt`,
@@ -694,13 +717,14 @@ var NotesheetToolbar = class {
       this.data.settings.fontSize = parseFloat(fontSelect.value);
       await this.callbacks.onSettingChange();
     });
+    const isCard = this.data.settings.pageSize === "card3x5";
     const marginGroup = row2.createDiv({ cls: "toolbar-group" });
     marginGroup.createSpan({ text: "Margins:", cls: "group-label" });
     const marginSelect = marginGroup.createEl("select", { cls: "notesheet-select" });
     [
-      { id: "tight", name: "Tight (0.2in)" },
-      { id: "compact", name: "Compact (0.3in)" },
-      { id: "normal", name: "Normal (0.5in)" }
+      { id: "tight", name: isCard ? "Tight (0.1in)" : "Tight (0.2in)" },
+      { id: "compact", name: isCard ? "Compact (0.15in)" : "Compact (0.3in)" },
+      { id: "normal", name: isCard ? "Normal (0.25in)" : "Normal (0.5in)" }
     ].forEach((m) => {
       const opt = marginSelect.createEl("option", { text: m.name, value: m.id });
       if (this.data.settings.margins === m.id) opt.selected = true;
@@ -742,13 +766,42 @@ var NotesheetToolbar = class {
     const paperSelect = paperGroup.createEl("select", { cls: "notesheet-select" });
     [
       { id: "letter", name: "US Letter" },
-      { id: "a4", name: "A4" }
+      { id: "a4", name: "A4" },
+      { id: "card3x5", name: '3" x 5" Card' }
     ].forEach((p) => {
       const opt = paperSelect.createEl("option", { text: p.name, value: p.id });
       if (this.data.settings.pageSize === p.id) opt.selected = true;
     });
     paperSelect.addEventListener("change", async () => {
-      this.data.settings.pageSize = paperSelect.value;
+      const prevSize = this.data.settings.pageSize;
+      const newSize = paperSelect.value;
+      this.data.settings.pageSize = newSize;
+      if (newSize === "card3x5" && prevSize !== "card3x5") {
+        if (!this.data.settings.orientation) {
+          this.data.settings.orientation = "landscape";
+        }
+        if (this.data.settings.columns > 2) {
+          this.data.settings.columns = 1;
+        }
+        if (this.data.settings.fontSize > 8) {
+          this.data.settings.fontSize = 7;
+        }
+      }
+      await this.callbacks.onSettingChange();
+    });
+    const orientGroup = row2.createDiv({ cls: "toolbar-group" });
+    orientGroup.createSpan({ text: "Orientation:", cls: "group-label" });
+    const orientSelect = orientGroup.createEl("select", { cls: "notesheet-select" });
+    const currentOrient = this.data.settings.orientation || (this.data.settings.pageSize === "card3x5" ? "landscape" : "portrait");
+    [
+      { id: "portrait", name: "Portrait" },
+      { id: "landscape", name: "Landscape" }
+    ].forEach((o) => {
+      const opt = orientSelect.createEl("option", { text: o.name, value: o.id });
+      if (currentOrient === o.id) opt.selected = true;
+    });
+    orientSelect.addEventListener("change", async () => {
+      this.data.settings.orientation = orientSelect.value;
       await this.callbacks.onSettingChange();
     });
     const borderGroup = row2.createDiv({ cls: "toolbar-group" });
@@ -1814,12 +1867,29 @@ var PrintPreviewModal = class extends import_obsidian10.Modal {
     const header = contentEl.createDiv({ cls: "notesheet-preview-modal-header" });
     const headerLeft = header.createDiv({ cls: "preview-header-left" });
     headerLeft.createSpan({ cls: "preview-modal-title", text: "Print Preview" });
-    const paperName = this.data.settings.pageSize === "a4" ? "A4" : "US Letter";
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === "card3x5" ? "landscape" : "portrait");
+    const isCard = pageSize === "card3x5";
+    const orientLabel = orientation === "landscape" ? "Landscape" : "Portrait";
+    let paperName = "US Letter";
+    if (isCard) {
+      paperName = `3" x 5" Notecard (${orientLabel})`;
+    } else if (pageSize === "a4") {
+      paperName = `A4 (${orientLabel})`;
+    } else {
+      paperName = `US Letter (${orientLabel})`;
+    }
     const densityName = (this.data.settings.density || "compact") === "compact" ? "Compact" : "Normal";
-    const marginsName = this.data.settings.margins === "tight" ? "Tight (0.2in)" : this.data.settings.margins === "normal" ? "Normal (0.5in)" : "Compact (0.3in)";
+    let marginsName = "Compact (0.3in)";
+    if (isCard) {
+      marginsName = this.data.settings.margins === "tight" ? "Tight (0.1in)" : this.data.settings.margins === "normal" ? "Normal (0.25in)" : "Compact (0.15in)";
+    } else {
+      marginsName = this.data.settings.margins === "tight" ? "Tight (0.2in)" : this.data.settings.margins === "normal" ? "Normal (0.5in)" : "Compact (0.3in)";
+    }
+    const unitDesc = isCard ? "2 Sides (Front & Back)" : "2 Pages (Front & Back)";
     headerLeft.createSpan({
       cls: "preview-modal-info",
-      text: `${this.data.title} \u2022 2 Pages (Front & Back) \u2022 ${paperName} \u2022 ${marginsName} \u2022 ${densityName} Density`
+      text: `${this.data.title} \u2022 ${unitDesc} \u2022 ${paperName} \u2022 ${marginsName} \u2022 ${densityName} Density`
     });
     const headerRight = header.createDiv({ cls: "preview-header-right" });
     const zoomGroup = headerRight.createDiv({ cls: "preview-zoom-group" });
@@ -1864,7 +1934,7 @@ var PrintPreviewModal = class extends import_obsidian10.Modal {
     });
     const viewerBackdrop = contentEl.createDiv({ cls: "notesheet-preview-backdrop" });
     this.previewWrapperEl = viewerBackdrop.createDiv({
-      cls: `notesheet-preview-container notesheet-print-container density-${this.data.settings.density || "compact"}`
+      cls: `notesheet-preview-container notesheet-print-container density-${this.data.settings.density || "compact"} paper-${pageSize} orientation-${orientation}`
     });
     this.previewWrapperEl.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
     this.previewWrapperEl.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
@@ -1873,7 +1943,7 @@ var PrintPreviewModal = class extends import_obsidian10.Modal {
       const pageWrapper = this.previewWrapperEl.createDiv({ cls: "notesheet-preview-page-wrapper" });
       pageWrapper.createDiv({
         cls: "notesheet-preview-sheet-tag",
-        text: idx === 0 ? "Page 1 \u2014 Front" : "Page 2 \u2014 Back"
+        text: isCard ? idx === 0 ? "Card 1 \u2014 Front" : "Card 2 \u2014 Back" : idx === 0 ? "Page 1 \u2014 Front" : "Page 2 \u2014 Back"
       });
       pageWrapper.appendChild(pageEl);
       this.view.updatePageFit(pageEl);
@@ -1886,9 +1956,20 @@ var PrintPreviewModal = class extends import_obsidian10.Modal {
   autoFitZoom(labelEl) {
     if (!this.previewWrapperEl || !this.contentEl) return;
     const availableWidth = this.contentEl.clientWidth - 80;
-    const paperWidth = this.data.settings.pageSize === "a4" ? 794 : 816;
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === "card3x5" ? "landscape" : "portrait");
+    const isLandscape = orientation === "landscape";
+    let paperWidth = 816;
+    if (pageSize === "a4") {
+      paperWidth = isLandscape ? 1123 : 794;
+    } else if (pageSize === "card3x5") {
+      paperWidth = isLandscape ? 480 : 288;
+    } else {
+      paperWidth = isLandscape ? 1056 : 816;
+    }
     if (availableWidth > 0) {
-      const idealZoom = Math.min(1, Math.max(0.4, availableWidth / paperWidth * 0.95));
+      const maxZoom = pageSize === "card3x5" ? 1.4 : 1;
+      const idealZoom = Math.min(maxZoom, Math.max(0.4, availableWidth / paperWidth * 0.95));
       this.currentZoom = parseFloat(idealZoom.toFixed(2));
       this.updateZoom(labelEl);
     }
@@ -2124,8 +2205,10 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     }
   }
   renderSinglePage(container, page) {
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === "card3x5" ? "landscape" : "portrait");
     const pageSheet = container.createDiv({
-      cls: `notesheet-page-sheet paper-${this.data.settings.pageSize} margin-${this.data.settings.margins}`,
+      cls: `notesheet-page-sheet paper-${pageSize} orientation-${orientation} margin-${this.data.settings.margins}`,
       attr: { id: `notesheet-page-${page.id}` }
     });
     const pageHeader = pageSheet.createDiv({ cls: "notesheet-page-header" });
@@ -2326,11 +2409,29 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     const headerEl = pageSheet.querySelector(".notesheet-page-header");
     const footerEl = pageSheet.querySelector(".notesheet-page-footer");
     const statsEl = pageSheet.querySelector(".page-stats");
-    const isA4 = this.data.settings.pageSize === "a4";
-    const paperHeight = isA4 ? 1123 : 1056;
-    const marginPx = this.data.settings.margins === "tight" ? 19.2 : this.data.settings.margins === "normal" ? 48 : 28.8;
-    const headerH = headerEl ? headerEl.offsetHeight || 30 : 0;
-    const footerH = footerEl ? footerEl.offsetHeight || 24 : 0;
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === "card3x5" ? "landscape" : "portrait");
+    const isLandscape = orientation === "landscape";
+    let paperWidth = 816;
+    let paperHeight = 1056;
+    if (pageSize === "a4") {
+      paperWidth = isLandscape ? 1123 : 794;
+      paperHeight = isLandscape ? 794 : 1123;
+    } else if (pageSize === "card3x5") {
+      paperWidth = isLandscape ? 480 : 288;
+      paperHeight = isLandscape ? 288 : 480;
+    } else {
+      paperWidth = isLandscape ? 1056 : 816;
+      paperHeight = isLandscape ? 816 : 1056;
+    }
+    let marginPx = 28.8;
+    if (pageSize === "card3x5") {
+      marginPx = this.data.settings.margins === "tight" ? 10 : this.data.settings.margins === "normal" ? 24 : 15;
+    } else {
+      marginPx = this.data.settings.margins === "tight" ? 19.2 : this.data.settings.margins === "normal" ? 48 : 28.8;
+    }
+    const headerH = headerEl ? headerEl.offsetHeight || 26 : 0;
+    const footerH = footerEl ? footerEl.offsetHeight || 20 : 0;
     const availableHeight = paperHeight - marginPx * 2 - headerH - footerH - 6;
     const cols = Array.from(grid.querySelectorAll(".notesheet-column"));
     if (cols.length === 0) return;
@@ -2342,8 +2443,10 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     }
     const itemCount = cols.reduce((acc, c) => acc + c.querySelectorAll(".notesheet-card").length, 0);
     const autoFit = this.data.settings.autoFitPage !== false;
+    const minScale = pageSize === "card3x5" ? 0.5 : 0.65;
+    const unitLabel = pageSize === "card3x5" ? "notecard" : "page";
     if (autoFit && maxColH > availableHeight) {
-      const targetScale = Math.max(0.65, Math.min(1, availableHeight / maxColH));
+      const targetScale = Math.max(minScale, Math.min(1, availableHeight / maxColH));
       const scaleStr = targetScale.toFixed(3);
       if (grid.style.zoom !== scaleStr) {
         grid.style.zoom = scaleStr;
@@ -2371,7 +2474,7 @@ var NotesheetView = class extends import_obsidian11.ItemView {
         pageSheet.classList.add("is-overflowing");
         if (statsEl) {
           const overflowPx = Math.round(maxColH - availableHeight);
-          statsEl.setText(`${itemCount} cards \u2022 \u26A0\uFE0F Overflows page (+${overflowPx}px)`);
+          statsEl.setText(`${itemCount} cards \u2022 \u26A0\uFE0F Overflows ${unitLabel} (+${overflowPx}px)`);
           statsEl.addClass("overflow-warn");
           statsEl.removeClass("fit-active");
         }
@@ -2432,15 +2535,26 @@ var NotesheetView = class extends import_obsidian11.ItemView {
   }
   setupPrintContainer() {
     this.cleanPrintContainer();
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === "card3x5" ? "landscape" : "portrait");
+    const isLandscape = orientation === "landscape";
     const printContainer = document.body.createDiv({
-      cls: `print notesheet-print-container density-${this.data.settings.density || "compact"}`
+      cls: `print notesheet-print-container density-${this.data.settings.density || "compact"} paper-${pageSize} orientation-${orientation}`
     });
     printContainer.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
-    const marginInches = this.data.settings.margins === "tight" ? "0.2in" : this.data.settings.margins === "normal" ? "0.5in" : "0.25in";
+    let pageRuleSize = "";
+    let marginInches = "0.25in";
+    if (pageSize === "card3x5") {
+      pageRuleSize = isLandscape ? "5in 3in" : "3in 5in";
+      marginInches = this.data.settings.margins === "tight" ? "0.1in" : this.data.settings.margins === "normal" ? "0.25in" : "0.15in";
+    } else {
+      pageRuleSize = `${pageSize} ${orientation}`;
+      marginInches = this.data.settings.margins === "tight" ? "0.2in" : this.data.settings.margins === "normal" ? "0.5in" : "0.25in";
+    }
     const dynamicStyle = document.createElement("style");
     dynamicStyle.id = "notesheet-print-dynamic-style";
-    dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
+    dynamicStyle.textContent = `@page { size: ${pageRuleSize}; margin: ${marginInches}; }`;
     document.head.appendChild(dynamicStyle);
     const pages = this.createPrintPageElements();
     pages.forEach((pageEl) => {
@@ -2454,7 +2568,8 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     document.getElementById("notesheet-print-dynamic-style")?.remove();
   }
   printNotesheet() {
-    new import_obsidian11.Notice("Notesheet: Preparing 2-page print & PDF export...");
+    const isCard = this.data.settings.pageSize === "card3x5";
+    new import_obsidian11.Notice(isCard ? "Notesheet: Preparing 3x5 notecard print & PDF export..." : "Notesheet: Preparing 2-page print & PDF export...");
     this.setupPrintContainer();
     setTimeout(() => {
       let cleaned = false;
@@ -2506,7 +2621,7 @@ var NotesheetSettingTab = class extends import_obsidian12.PluginSettingTab {
       });
     });
     new import_obsidian12.Setting(containerEl).setName("Default Font Size").setDesc("Base font size for notesheet cards in points (pt)").addSlider((slider) => {
-      slider.setLimits(6, 12, 0.5).setValue(this.plugin.settings.defaultFontSize).setDynamicTooltip().onChange(async (val) => {
+      slider.setLimits(5, 12, 0.5).setValue(this.plugin.settings.defaultFontSize).setDynamicTooltip().onChange(async (val) => {
         this.plugin.settings.defaultFontSize = val;
         await this.plugin.saveSettings();
       });
@@ -2514,16 +2629,26 @@ var NotesheetSettingTab = class extends import_obsidian12.PluginSettingTab {
     new import_obsidian12.Setting(containerEl).setName("Default Paper Size").setDesc("Standard paper dimension for print & PDF layout").addDropdown((dd) => {
       dd.addOption("letter", 'US Letter (8.5" x 11")');
       dd.addOption("a4", "A4 (210 x 297 mm)");
+      dd.addOption("card3x5", '3" x 5" Notecard (Index Card)');
       dd.setValue(this.plugin.settings.defaultPageSize);
       dd.onChange(async (val) => {
         this.plugin.settings.defaultPageSize = val;
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian12.Setting(containerEl).setName("Default Margins").setDesc("Margins for notesheet pages").addDropdown((dd) => {
-      dd.addOption("tight", "Tight (0.2in / 5mm)");
-      dd.addOption("compact", "Compact (0.3in / 7.5mm)");
-      dd.addOption("normal", "Normal (0.5in / 12.7mm)");
+    new import_obsidian12.Setting(containerEl).setName("Default Orientation").setDesc("Orientation for sheets and cards (Landscape is standard for 3x5 notecards)").addDropdown((dd) => {
+      dd.addOption("portrait", "Portrait");
+      dd.addOption("landscape", "Landscape");
+      dd.setValue(this.plugin.settings.defaultOrientation || "portrait");
+      dd.onChange(async (val) => {
+        this.plugin.settings.defaultOrientation = val;
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian12.Setting(containerEl).setName("Default Margins").setDesc("Margins for notesheet pages (Tight/Compact recommended for 3x5 notecards)").addDropdown((dd) => {
+      dd.addOption("tight", "Tight (0.2in / 0.1in card)");
+      dd.addOption("compact", "Compact (0.3in / 0.15in card)");
+      dd.addOption("normal", "Normal (0.5in / 0.25in card)");
       dd.setValue(this.plugin.settings.defaultMargins);
       dd.onChange(async (val) => {
         this.plugin.settings.defaultMargins = val;
@@ -2895,6 +3020,13 @@ var NotesheetPlugin = class extends import_obsidian15.Plugin {
       }
     });
     this.addCommand({
+      id: "create-notecard",
+      name: "Create new 3x5 Notecard",
+      callback: async () => {
+        await this.promptCreateNewNotecard();
+      }
+    });
+    this.addCommand({
       id: "toggle-notesheet-view",
       name: "Toggle between Notesheet and Markdown view",
       checkCallback: (checking) => {
@@ -3064,14 +3196,27 @@ var NotesheetPlugin = class extends import_obsidian15.Plugin {
   }
   async promptCreateNewNotesheet() {
     return new Promise((resolve) => {
-      new CreateNotesheetModal(this.app, this.settings.defaultFolder, async (title, folder) => {
-        const file = await this.store.createNotesheet(folder, title);
+      new CreateNotesheetModal(this.app, this.settings.defaultFolder, async (title, folder, pageSize) => {
+        const file = await this.store.createNotesheet(folder, title, { pageSize });
         this.settings.activeNotesheetPath = file.path;
         await this.saveSettings();
         await this.openNotesheetFile(file);
-        new import_obsidian15.Notice(`Created exam notesheet: "${file.basename}"`);
+        const unitName = pageSize === "card3x5" ? "3x5 notecard" : "exam notesheet";
+        new import_obsidian15.Notice(`Created ${unitName}: "${file.basename}"`);
         resolve(file);
-      }).open();
+      }, this.settings.defaultPageSize || "letter").open();
+    });
+  }
+  async promptCreateNewNotecard() {
+    return new Promise((resolve) => {
+      new CreateNotesheetModal(this.app, this.settings.defaultFolder, async (title, folder, pageSize) => {
+        const file = await this.store.createNotesheet(folder, title, { pageSize });
+        this.settings.activeNotesheetPath = file.path;
+        await this.saveSettings();
+        await this.openNotesheetFile(file);
+        new import_obsidian15.Notice(`Created 3x5 notecard: "${file.basename}"`);
+        resolve(file);
+      }, "card3x5").open();
     });
   }
 };
@@ -3105,17 +3250,47 @@ var SelectNotesheetModal = class extends import_obsidian15.Modal {
   }
 };
 var CreateNotesheetModal = class extends import_obsidian15.Modal {
-  constructor(app, defaultFolder, onSubmit) {
+  constructor(app, defaultFolder, onSubmit, initialPageSize = "letter") {
     super(app);
     this.folder = defaultFolder;
     this.onSubmit = onSubmit;
+    this.selectedPageSize = initialPageSize;
   }
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h3", { text: "Create Exam Notesheet" });
-    let title = "Final Exam Cheat Sheet";
-    new import_obsidian15.Setting(contentEl).setName("Notesheet Title").setDesc("e.g. Physics 240 Midterm, Calculus II Exam").addText((text) => {
+    const isCard = this.selectedPageSize === "card3x5";
+    const headerTitle = contentEl.createEl("h3", {
+      text: isCard ? "Create 3x5 Exam Notecard" : "Create Exam Notesheet"
+    });
+    let title = isCard ? "Exam Notecard (3x5)" : "Final Exam Cheat Sheet";
+    let textInputEl = null;
+    new import_obsidian15.Setting(contentEl).setName("Format / Paper Size").setDesc('Select standard sheet or 3" x 5" index notecard').addDropdown((dd) => {
+      dd.addOption("letter", 'US Letter (8.5" x 11")');
+      dd.addOption("card3x5", '3" x 5" Notecard (Index Card)');
+      dd.addOption("a4", "A4 (210 x 297 mm)");
+      dd.setValue(this.selectedPageSize);
+      dd.onChange((val) => {
+        const oldWasCard = this.selectedPageSize === "card3x5";
+        this.selectedPageSize = val;
+        const newIsCard = this.selectedPageSize === "card3x5";
+        headerTitle.setText(newIsCard ? "Create 3x5 Exam Notecard" : "Create Exam Notesheet");
+        if (submitBtn) {
+          submitBtn.setButtonText(newIsCard ? "Create Notecard" : "Create Notesheet");
+        }
+        if (textInputEl) {
+          if (newIsCard && !oldWasCard && (title === "Final Exam Cheat Sheet" || !title)) {
+            title = "Exam Notecard (3x5)";
+            textInputEl.value = title;
+          } else if (!newIsCard && oldWasCard && (title === "Exam Notecard (3x5)" || !title)) {
+            title = "Final Exam Cheat Sheet";
+            textInputEl.value = title;
+          }
+        }
+      });
+    });
+    new import_obsidian15.Setting(contentEl).setName("Title").setDesc("e.g. Physics 240 Midterm, Calculus II Exam").addText((text) => {
+      textInputEl = text.inputEl;
       text.setValue(title);
       text.onChange((val) => {
         title = val.trim();
@@ -3127,10 +3302,14 @@ var CreateNotesheetModal = class extends import_obsidian15.Modal {
         this.folder = val.trim();
       });
     });
+    let submitBtn = null;
     new import_obsidian15.Setting(contentEl).addButton((btn) => {
-      btn.setButtonText("Create Notesheet").setCta().onClick(() => {
-        if (!title) title = "Exam Notesheet";
-        this.onSubmit(title, this.folder);
+      submitBtn = btn;
+      btn.setButtonText(isCard ? "Create Notecard" : "Create Notesheet").setCta().onClick(() => {
+        if (!title) {
+          title = this.selectedPageSize === "card3x5" ? "Exam Notecard" : "Exam Notesheet";
+        }
+        this.onSubmit(title, this.folder, this.selectedPageSize);
         this.close();
       });
     });

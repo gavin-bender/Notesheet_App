@@ -264,8 +264,10 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   }
 
   private renderSinglePage(container: HTMLElement, page: { id: string; name: string; items: NotesheetItem[] }): void {
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === 'card3x5' ? 'landscape' : 'portrait');
     const pageSheet = container.createDiv({
-      cls: `notesheet-page-sheet paper-${this.data.settings.pageSize} margin-${this.data.settings.margins}`,
+      cls: `notesheet-page-sheet paper-${pageSize} orientation-${orientation} margin-${this.data.settings.margins}`,
       attr: { id: `notesheet-page-${page.id}` }
     });
 
@@ -520,11 +522,34 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const footerEl = pageSheet.querySelector<HTMLElement>('.notesheet-page-footer');
     const statsEl = pageSheet.querySelector<HTMLElement>('.page-stats');
 
-    const isA4 = this.data.settings.pageSize === 'a4';
-    const paperHeight = isA4 ? 1123 : 1056;
-    const marginPx = this.data.settings.margins === 'tight' ? 19.2 : this.data.settings.margins === 'normal' ? 48 : 28.8;
-    const headerH = headerEl ? headerEl.offsetHeight || 30 : 0;
-    const footerH = footerEl ? footerEl.offsetHeight || 24 : 0;
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === 'card3x5' ? 'landscape' : 'portrait');
+    const isLandscape = orientation === 'landscape';
+
+    let paperWidth = 816;
+    let paperHeight = 1056;
+
+    if (pageSize === 'a4') {
+      paperWidth = isLandscape ? 1123 : 794;
+      paperHeight = isLandscape ? 794 : 1123;
+    } else if (pageSize === 'card3x5') {
+      paperWidth = isLandscape ? 480 : 288;
+      paperHeight = isLandscape ? 288 : 480;
+    } else {
+      // letter
+      paperWidth = isLandscape ? 1056 : 816;
+      paperHeight = isLandscape ? 816 : 1056;
+    }
+
+    let marginPx = 28.8;
+    if (pageSize === 'card3x5') {
+      marginPx = this.data.settings.margins === 'tight' ? 10 : this.data.settings.margins === 'normal' ? 24 : 15;
+    } else {
+      marginPx = this.data.settings.margins === 'tight' ? 19.2 : this.data.settings.margins === 'normal' ? 48 : 28.8;
+    }
+
+    const headerH = headerEl ? headerEl.offsetHeight || 26 : 0;
+    const footerH = footerEl ? footerEl.offsetHeight || 20 : 0;
     const availableHeight = paperHeight - (marginPx * 2) - headerH - footerH - 6;
 
     const cols = Array.from(grid.querySelectorAll<HTMLElement>('.notesheet-column'));
@@ -539,9 +564,11 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
     const itemCount = cols.reduce((acc, c) => acc + c.querySelectorAll('.notesheet-card').length, 0);
     const autoFit = this.data.settings.autoFitPage !== false;
+    const minScale = pageSize === 'card3x5' ? 0.5 : 0.65;
+    const unitLabel = pageSize === 'card3x5' ? 'notecard' : 'page';
 
     if (autoFit && maxColH > availableHeight) {
-      const targetScale = Math.max(0.65, Math.min(1.0, availableHeight / maxColH));
+      const targetScale = Math.max(minScale, Math.min(1.0, availableHeight / maxColH));
       const scaleStr = targetScale.toFixed(3);
       if (grid.style.zoom !== scaleStr) {
         grid.style.zoom = scaleStr;
@@ -569,7 +596,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         pageSheet.classList.add('is-overflowing');
         if (statsEl) {
           const overflowPx = Math.round(maxColH - availableHeight);
-          statsEl.setText(`${itemCount} cards • ⚠️ Overflows page (+${overflowPx}px)`);
+          statsEl.setText(`${itemCount} cards • ⚠️ Overflows ${unitLabel} (+${overflowPx}px)`);
           statsEl.addClass('overflow-warn');
           statsEl.removeClass('fit-active');
         }
@@ -651,17 +678,31 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
   public setupPrintContainer(): HTMLElement {
     this.cleanPrintContainer();
+    const pageSize = this.data.settings.pageSize;
+    const orientation = this.data.settings.orientation || (pageSize === 'card3x5' ? 'landscape' : 'portrait');
+    const isLandscape = orientation === 'landscape';
+
     const printContainer = document.body.createDiv({
-      cls: `print notesheet-print-container density-${this.data.settings.density || 'compact'}`
+      cls: `print notesheet-print-container density-${this.data.settings.density || 'compact'} paper-${pageSize} orientation-${orientation}`
     });
     printContainer.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
 
     // Inject dynamic @page style for margins and page size
-    const marginInches = this.data.settings.margins === 'tight' ? '0.2in' : this.data.settings.margins === 'normal' ? '0.5in' : '0.25in';
+    let pageRuleSize = '';
+    let marginInches = '0.25in';
+
+    if (pageSize === 'card3x5') {
+      pageRuleSize = isLandscape ? '5in 3in' : '3in 5in';
+      marginInches = this.data.settings.margins === 'tight' ? '0.1in' : this.data.settings.margins === 'normal' ? '0.25in' : '0.15in';
+    } else {
+      pageRuleSize = `${pageSize} ${orientation}`;
+      marginInches = this.data.settings.margins === 'tight' ? '0.2in' : this.data.settings.margins === 'normal' ? '0.5in' : '0.25in';
+    }
+
     const dynamicStyle = document.createElement('style');
     dynamicStyle.id = 'notesheet-print-dynamic-style';
-    dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
+    dynamicStyle.textContent = `@page { size: ${pageRuleSize}; margin: ${marginInches}; }`;
     document.head.appendChild(dynamicStyle);
 
     const pages = this.createPrintPageElements();
@@ -680,7 +721,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   }
 
   public printNotesheet(): void {
-    new Notice('Notesheet: Preparing 2-page print & PDF export...');
+    const isCard = this.data.settings.pageSize === 'card3x5';
+    new Notice(isCard ? 'Notesheet: Preparing 3x5 notecard print & PDF export...' : 'Notesheet: Preparing 2-page print & PDF export...');
     this.setupPrintContainer();
 
     setTimeout(() => {

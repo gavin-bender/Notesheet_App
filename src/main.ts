@@ -3,7 +3,8 @@ import {
   PluginSettings,
   DEFAULT_PLUGIN_SETTINGS,
   NotesheetItem,
-  NotesheetData
+  NotesheetData,
+  PageSize
 } from './types';
 import { NotesheetStore } from './storage/NotesheetStore';
 import { BlockManager } from './sync/BlockManager';
@@ -236,6 +237,14 @@ export default class NotesheetPlugin extends Plugin {
     });
 
     this.addCommand({
+      id: 'create-notecard',
+      name: 'Create new 3x5 Notecard',
+      callback: async () => {
+        await this.promptCreateNewNotecard();
+      }
+    });
+
+    this.addCommand({
       id: 'toggle-notesheet-view',
       name: 'Toggle between Notesheet and Markdown view',
       checkCallback: (checking: boolean) => {
@@ -447,14 +456,28 @@ export default class NotesheetPlugin extends Plugin {
 
   public async promptCreateNewNotesheet(): Promise<TFile | null> {
     return new Promise((resolve) => {
-      new CreateNotesheetModal(this.app, this.settings.defaultFolder, async (title, folder) => {
-        const file = await this.store.createNotesheet(folder, title);
+      new CreateNotesheetModal(this.app, this.settings.defaultFolder, async (title, folder, pageSize) => {
+        const file = await this.store.createNotesheet(folder, title, { pageSize });
         this.settings.activeNotesheetPath = file.path;
         await this.saveSettings();
         await this.openNotesheetFile(file);
-        new Notice(`Created exam notesheet: "${file.basename}"`);
+        const unitName = pageSize === 'card3x5' ? '3x5 notecard' : 'exam notesheet';
+        new Notice(`Created ${unitName}: "${file.basename}"`);
         resolve(file);
-      }).open();
+      }, this.settings.defaultPageSize || 'letter').open();
+    });
+  }
+
+  public async promptCreateNewNotecard(): Promise<TFile | null> {
+    return new Promise((resolve) => {
+      new CreateNotesheetModal(this.app, this.settings.defaultFolder, async (title, folder, pageSize) => {
+        const file = await this.store.createNotesheet(folder, title, { pageSize });
+        this.settings.activeNotesheetPath = file.path;
+        await this.saveSettings();
+        await this.openNotesheetFile(file);
+        new Notice(`Created 3x5 notecard: "${file.basename}"`);
+        resolve(file);
+      }, 'card3x5').open();
     });
   }
 }
@@ -498,25 +521,68 @@ class SelectNotesheetModal extends Modal {
 
 class CreateNotesheetModal extends Modal {
   private folder: string;
-  private onSubmit: (title: string, folder: string) => void;
+  private selectedPageSize: PageSize;
+  private onSubmit: (title: string, folder: string, pageSize: PageSize) => void;
 
-  constructor(app: App, defaultFolder: string, onSubmit: (title: string, folder: string) => void) {
+  constructor(
+    app: App,
+    defaultFolder: string,
+    onSubmit: (title: string, folder: string, pageSize: PageSize) => void,
+    initialPageSize: PageSize = 'letter'
+  ) {
     super(app);
     this.folder = defaultFolder;
     this.onSubmit = onSubmit;
+    this.selectedPageSize = initialPageSize;
   }
 
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl('h3', { text: 'Create Exam Notesheet' });
 
-    let title = 'Final Exam Cheat Sheet';
+    const isCard = this.selectedPageSize === 'card3x5';
+    const headerTitle = contentEl.createEl('h3', {
+      text: isCard ? 'Create 3x5 Exam Notecard' : 'Create Exam Notesheet'
+    });
+
+    let title = isCard ? 'Exam Notecard (3x5)' : 'Final Exam Cheat Sheet';
+    let textInputEl: HTMLInputElement | null = null;
 
     new Setting(contentEl)
-      .setName('Notesheet Title')
+      .setName('Format / Paper Size')
+      .setDesc('Select standard sheet or 3" x 5" index notecard')
+      .addDropdown(dd => {
+        dd.addOption('letter', 'US Letter (8.5" x 11")');
+        dd.addOption('card3x5', '3" x 5" Notecard (Index Card)');
+        dd.addOption('a4', 'A4 (210 x 297 mm)');
+        dd.setValue(this.selectedPageSize);
+        dd.onChange(val => {
+          const oldWasCard = this.selectedPageSize === 'card3x5';
+          this.selectedPageSize = val as PageSize;
+          const newIsCard = this.selectedPageSize === 'card3x5';
+
+          headerTitle.setText(newIsCard ? 'Create 3x5 Exam Notecard' : 'Create Exam Notesheet');
+          if (submitBtn) {
+            submitBtn.setButtonText(newIsCard ? 'Create Notecard' : 'Create Notesheet');
+          }
+
+          if (textInputEl) {
+            if (newIsCard && !oldWasCard && (title === 'Final Exam Cheat Sheet' || !title)) {
+              title = 'Exam Notecard (3x5)';
+              textInputEl.value = title;
+            } else if (!newIsCard && oldWasCard && (title === 'Exam Notecard (3x5)' || !title)) {
+              title = 'Final Exam Cheat Sheet';
+              textInputEl.value = title;
+            }
+          }
+        });
+      });
+
+    new Setting(contentEl)
+      .setName('Title')
       .setDesc('e.g. Physics 240 Midterm, Calculus II Exam')
       .addText(text => {
+        textInputEl = text.inputEl;
         text.setValue(title);
         text.onChange(val => {
           title = val.trim();
@@ -533,14 +599,18 @@ class CreateNotesheetModal extends Modal {
         });
       });
 
+    let submitBtn: any = null;
     new Setting(contentEl)
       .addButton(btn => {
+        submitBtn = btn;
         btn
-          .setButtonText('Create Notesheet')
+          .setButtonText(isCard ? 'Create Notecard' : 'Create Notesheet')
           .setCta()
           .onClick(() => {
-            if (!title) title = 'Exam Notesheet';
-            this.onSubmit(title, this.folder);
+            if (!title) {
+              title = this.selectedPageSize === 'card3x5' ? 'Exam Notecard' : 'Exam Notesheet';
+            }
+            this.onSubmit(title, this.folder, this.selectedPageSize);
             this.close();
           });
       });

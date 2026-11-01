@@ -1,5 +1,5 @@
 import { App, TFile, normalizePath, Notice } from 'obsidian';
-import { NotesheetData, createDefaultNotesheetData, DEFAULT_CATEGORIES } from '../types';
+import { NotesheetData, NotesheetSettings, createDefaultNotesheetData, DEFAULT_CATEGORIES } from '../types';
 
 export class NotesheetStore {
   private app: App;
@@ -13,10 +13,12 @@ export class NotesheetStore {
    */
   public serialize(data: NotesheetData): string {
     const jsonStr = JSON.stringify(data, null, 2);
+    const orientation = data.settings.orientation || (data.settings.pageSize === 'card3x5' ? 'landscape' : 'portrait');
     return `---
 notesheet: true
 title: ${JSON.stringify(data.title)}
 pageSize: ${data.settings.pageSize}
+orientation: ${orientation}
 columns: ${data.settings.columns}
 fontSize: ${data.settings.fontSize}
 updatedAt: ${new Date().toISOString()}
@@ -32,30 +34,43 @@ ${jsonStr}
    * Parse notesheet data from file content.
    */
   public deserialize(content: string, fallbackTitle = 'Notesheet'): NotesheetData {
+    const normalizeSettings = (parsed: NotesheetData) => {
+      if (!parsed.categories || !Array.isArray(parsed.categories)) {
+        parsed.categories = [...DEFAULT_CATEGORIES];
+      }
+      if (parsed.settings) {
+        // Normalize legacy or alternate 3x5 paper size names
+        if ((parsed.settings as any).pageSize === '3x5' || (parsed.settings as any).pageSize === 'notecard' || (parsed.settings as any).pageSize === 'index-card') {
+          parsed.settings.pageSize = 'card3x5';
+        }
+        if (!parsed.settings.pageSize) {
+          parsed.settings.pageSize = 'letter';
+        }
+        if (!parsed.settings.orientation) {
+          parsed.settings.orientation = parsed.settings.pageSize === 'card3x5' ? 'landscape' : 'portrait';
+        }
+        if (parsed.settings.showCategoryTitles === undefined) {
+          parsed.settings.showCategoryTitles = true;
+        }
+        if (parsed.settings.density === undefined) {
+          parsed.settings.density = 'compact';
+        }
+        if (parsed.settings.autoFitPage === undefined) {
+          parsed.settings.autoFitPage = true;
+        }
+        if (parsed.settings.showCardBackground === undefined) {
+          parsed.settings.showCardBackground = false;
+        }
+      }
+    };
+
     // Try to find ```notesheet-data ... ``` or ```notesheet ... ```
     const match = content.match(/```notesheet(?:-data)?\s*\n([\s\S]*?)\n```/);
     if (match && match[1]) {
       try {
         const parsed = JSON.parse(match[1]) as NotesheetData;
         if (parsed && parsed.pages) {
-          // Backward compatibility for categories
-          if (!parsed.categories || !Array.isArray(parsed.categories)) {
-            parsed.categories = [...DEFAULT_CATEGORIES];
-          }
-          if (parsed.settings) {
-            if (parsed.settings.showCategoryTitles === undefined) {
-              parsed.settings.showCategoryTitles = true;
-            }
-            if (parsed.settings.density === undefined) {
-              parsed.settings.density = 'compact';
-            }
-            if (parsed.settings.autoFitPage === undefined) {
-              parsed.settings.autoFitPage = true;
-            }
-            if (parsed.settings.showCardBackground === undefined) {
-              parsed.settings.showCardBackground = false;
-            }
-          }
+          normalizeSettings(parsed);
 
           // Clean up titles of any legacy formatting or icon shortcodes
           const cleanTitleStr = (t?: string) => {
@@ -100,23 +115,7 @@ ${jsonStr}
     try {
       const parsed = JSON.parse(content) as NotesheetData;
       if (parsed && parsed.pages) {
-        if (!parsed.categories || !Array.isArray(parsed.categories)) {
-          parsed.categories = [...DEFAULT_CATEGORIES];
-        }
-        if (parsed.settings) {
-          if (parsed.settings.showCategoryTitles === undefined) {
-            parsed.settings.showCategoryTitles = true;
-          }
-          if (parsed.settings.density === undefined) {
-            parsed.settings.density = 'compact';
-          }
-          if (parsed.settings.autoFitPage === undefined) {
-            parsed.settings.autoFitPage = true;
-          }
-          if (parsed.settings.showCardBackground === undefined) {
-            parsed.settings.showCardBackground = false;
-          }
-        }
+        normalizeSettings(parsed);
         return parsed;
       }
     } catch {
@@ -130,8 +129,13 @@ ${jsonStr}
   /**
    * Create a new notesheet file in the vault.
    */
-  public async createNotesheet(folderPath = '', title = 'Exam Notesheet'): Promise<TFile> {
-    const safeTitle = title.replace(/[\\/:"*?<>|]/g, '').trim() || 'Exam Notesheet';
+  public async createNotesheet(
+    folderPath = '',
+    title = 'Exam Notesheet',
+    settings?: Partial<NotesheetSettings>
+  ): Promise<TFile> {
+    const isCard = settings?.pageSize === 'card3x5';
+    const safeTitle = title.replace(/[\\/:"*?<>|]/g, '').trim() || (isCard ? 'Exam Notecard' : 'Exam Notesheet');
     let baseFileName = `${safeTitle}.notesheet.md`;
     let fullPath = folderPath ? normalizePath(`${folderPath}/${baseFileName}`) : baseFileName;
 
@@ -143,10 +147,17 @@ ${jsonStr}
       counter++;
     }
 
-    const data = createDefaultNotesheetData(title);
+    const data = createDefaultNotesheetData(title, settings);
     const content = this.serialize(data);
     const file = await this.app.vault.create(fullPath, content);
     return file;
+  }
+
+  /**
+   * Helper to create a 3x5 notecard in the vault.
+   */
+  public async createNotecard(folderPath = '', title = 'Exam Notecard (3x5)'): Promise<TFile> {
+    return this.createNotesheet(folderPath, title, { pageSize: 'card3x5', orientation: 'landscape', columns: 1, fontSize: 7.0 });
   }
 
   /**

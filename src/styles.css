@@ -236,11 +236,42 @@
   min-height: 1056px;
 }
 
+.notesheet-page-sheet.paper-letter.orientation-landscape {
+  width: 1056px;
+  max-width: 1056px;
+  min-height: 816px;
+}
+
 /* A4 Page Dimensions (Ratio: 210 x 297mm) */
 .notesheet-page-sheet.paper-a4 {
   width: 794px;
   max-width: 794px;
   min-height: 1123px;
+}
+
+.notesheet-page-sheet.paper-a4.orientation-landscape {
+  width: 1123px;
+  max-width: 1123px;
+  min-height: 794px;
+}
+
+/* 3x5 Notecard Page Dimensions (Ratio: 5 x 3 in landscape, 3 x 5 in portrait) */
+.notesheet-page-sheet.paper-card3x5 {
+  width: 480px;
+  max-width: 480px;
+  min-height: 288px;
+}
+
+.notesheet-page-sheet.paper-card3x5.orientation-portrait {
+  width: 288px;
+  max-width: 288px;
+  min-height: 480px;
+}
+
+.notesheet-page-sheet.paper-card3x5.orientation-landscape {
+  width: 480px;
+  max-width: 480px;
+  min-height: 288px;
 }
 
 /* Margin Variations */
@@ -256,11 +287,40 @@
   padding: 38px;
 }
 
+.notesheet-page-sheet.paper-card3x5.margin-tight {
+  padding: 10px;
+}
+
+.notesheet-page-sheet.paper-card3x5.margin-compact {
+  padding: 15px;
+}
+
+.notesheet-page-sheet.paper-card3x5.margin-normal {
+  padding: 24px;
+}
+
 /* Visual guide when cards overflow the physical 1-page paper height */
 .notesheet-page-sheet.paper-letter.is-overflowing::after {
   content: '✂ Page Limit (Content below prints on additional page)';
   position: absolute;
   top: 1056px;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--text-error, #e53935);
+  color: var(--text-error, #e53935);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: right;
+  padding: 2px 8px;
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(229, 57, 53, 0.05);
+}
+
+.notesheet-page-sheet.paper-letter.orientation-landscape.is-overflowing::after {
+  content: '✂ Page Limit (Content below prints on additional page)';
+  position: absolute;
+  top: 816px;
   left: 0;
   right: 0;
   border-top: 2px dashed var(--text-error, #e53935);
@@ -289,6 +349,99 @@
   pointer-events: none;
   z-index: 10;
   background: rgba(229, 57, 53, 0.05);
+}
+
+.notesheet-page-sheet.paper-a4.orientation-landscape.is-overflowing::after {
+  content: '✂ Page Limit (Content below prints on additional page)';
+  position: absolute;
+  top: 794px;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--text-error, #e53935);
+  color: var(--text-error, #e53935);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: right;
+  padding: 2px 8px;
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(229, 57, 53, 0.05);
+}
+
+.notesheet-page-sheet.paper-card3x5.is-overflowing::after {
+  content: '✂ Card Limit (Content below overflows 3x5 notecard)';
+  position: absolute;
+  top: 288px;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--text-error, #e53935);
+  color: var(--text-error, #e53935);
+  font-size: 9px;
+  font-weight: 600;
+  text-align: right;
+  padding: 2px 6px;
+  pointer-events: none;
+  z-index: 10;
+  background: rgba(229, 57, 53, 0.05);
+}
+
+.notesheet-page-sheet.paper-card3x5.orientation-portrait.is-overflowing::after {
+  top: 480px;
+}
+
+/* Notecard-specific UI refinements */
+.notesheet-page-sheet.paper-card3x5 .notesheet-page-header {
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .page-title {
+  font-size: 10px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .page-stats {
+  font-size: 7.5pt;
+  padding: 1px 4px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-page-footer {
+  font-size: 6.5pt;
+  padding-top: 2px;
+  margin-top: auto;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-columns-grid {
+  gap: 4px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-column {
+  gap: 4px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-empty-state {
+  padding: 14px 10px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-empty-state svg {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 4px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-empty-state h3 {
+  font-size: 12px;
+  margin: 0 0 3px 0;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-empty-state p {
+  font-size: 10px;
+  margin: 0 0 8px 0;
+  max-width: 240px;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-empty-state button {
+  font-size: 10.5px;
+  padding: 2px 8px;
 }
 
 /* Page Header & Stats */
@@ -1563,11 +1716,51 @@
   max-height: 1056px !important;
 }
 
+.notesheet-preview-container .notesheet-page-sheet.paper-letter.orientation-landscape {
+  width: 1056px !important;
+  height: 816px !important;
+  max-width: 1056px !important;
+  max-height: 816px !important;
+}
+
 .notesheet-preview-container .notesheet-page-sheet.paper-a4 {
   width: 794px !important;
   height: 1123px !important;
   max-width: 794px !important;
   max-height: 1123px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-a4.orientation-landscape {
+  width: 1123px !important;
+  height: 794px !important;
+  max-width: 1123px !important;
+  max-height: 794px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-card3x5 {
+  width: 480px !important;
+  height: 288px !important;
+  max-width: 480px !important;
+  max-height: 288px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.orientation-portrait {
+  width: 288px !important;
+  height: 480px !important;
+  max-width: 288px !important;
+  max-height: 480px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-tight {
+  padding: 10px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-compact {
+  padding: 15px !important;
+}
+
+.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-normal {
+  padding: 24px !important;
 }
 
 .notesheet-preview-container .notesheet-page-sheet.margin-tight {
@@ -1841,7 +2034,8 @@
 
   .notesheet-print-container .notesheet-page-sheet,
   .notesheet-print-container .notesheet-page-sheet.paper-letter,
-  .notesheet-print-container .notesheet-page-sheet.paper-a4 {
+  .notesheet-print-container .notesheet-page-sheet.paper-a4,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 {
     display: block !important;
     width: 100% !important;
     max-width: none !important;
@@ -1854,6 +2048,39 @@
     padding: 0 !important;
     margin: 0 !important;
     box-sizing: border-box !important;
+  }
+
+  /* 3x5 Notecard Specific Print Sizing */
+  .notesheet-print-container.paper-card3x5 .notesheet-page-header,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-page-header {
+    padding-bottom: 2px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .notesheet-print-container.paper-card3x5 .page-title,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .page-title {
+    font-size: 10pt !important;
+  }
+
+  .notesheet-print-container.paper-card3x5 .page-stats,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .page-stats {
+    font-size: 7.5pt !important;
+  }
+
+  .notesheet-print-container.paper-card3x5 .notesheet-page-footer,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-page-footer {
+    font-size: 6.5pt !important;
+    padding-top: 2px !important;
+  }
+
+  .notesheet-print-container.paper-card3x5 .notesheet-columns-grid,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-columns-grid {
+    gap: 4px !important;
+  }
+
+  .notesheet-print-container.paper-card3x5 .notesheet-column,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-column {
+    gap: 4px !important;
   }
 
   /* Page breaks between sheets: break after each page except the last */

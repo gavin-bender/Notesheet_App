@@ -1,3 +1,6 @@
+export type PageSize = 'letter' | 'a4' | 'card3x5';
+export type PageOrientation = 'portrait' | 'landscape';
+
 export interface NotesheetCategory {
   id: string;
   name: string;
@@ -24,12 +27,12 @@ export interface NotesheetPage {
 }
 
 export interface NotesheetSettings {
-  pageSize: 'letter' | 'a4';
-  orientation: 'portrait' | 'landscape';
+  pageSize: PageSize;
+  orientation: PageOrientation;
   columns: number;         // 1, 2, 3, or 4 columns per page
-  fontSize: number;        // pt size: 6.0 - 12.0
+  fontSize: number;        // pt size: 5.0 - 12.0
   lineHeight: number;      // 1.0 - 1.5
-  margins: 'tight' | 'compact' | 'normal'; // tight: 0.2in, compact: 0.3in, normal: 0.5in
+  margins: 'tight' | 'compact' | 'normal'; // tight: 0.2in (0.1in card), compact: 0.3in (0.15in card), normal: 0.5in (0.25in card)
   density?: 'compact' | 'normal';          // Content density: compact (exam cheat sheet) vs normal
   autoFitPage?: boolean;                   // Automatically scale content to fit cleanly on 1 page per sheet
   showBorders: boolean;    // show card border boxes
@@ -52,8 +55,8 @@ export interface NotesheetData {
 export interface PluginSettings {
   defaultColumns: number;
   defaultFontSize: number;
-  defaultPageSize: 'letter' | 'a4';
-  defaultOrientation: 'portrait' | 'landscape';
+  defaultPageSize: PageSize;
+  defaultOrientation: PageOrientation;
   defaultMargins: 'tight' | 'compact' | 'normal';
   defaultDensity: 'compact' | 'normal';
   defaultAutoFitPage: boolean;
@@ -88,6 +91,23 @@ export const DEFAULT_NOTESHEET_SETTINGS: NotesheetSettings = {
   showCategoryTitles: true,
 };
 
+export const DEFAULT_NOTECARD_SETTINGS: NotesheetSettings = {
+  pageSize: 'card3x5',
+  orientation: 'landscape',
+  columns: 1,
+  fontSize: 7.0,
+  lineHeight: 1.2,
+  margins: 'compact',
+  density: 'compact',
+  autoFitPage: true,
+  showBorders: true,
+  showCardBackground: false,
+  showCardTitles: true,
+  showSourceLinks: true,
+  showPageNumbers: true,
+  showCategoryTitles: true,
+};
+
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   defaultColumns: 2,
   defaultFontSize: 8.5,
@@ -102,22 +122,27 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   confirmCardDelete: false,
 };
 
-export function createDefaultNotesheetData(title = 'Exam Notesheet'): NotesheetData {
+export function createDefaultNotesheetData(
+  title = 'Exam Notesheet',
+  customSettings?: Partial<NotesheetSettings>
+): NotesheetData {
+  const isCard = customSettings?.pageSize === 'card3x5';
+  const baseSettings = isCard ? DEFAULT_NOTECARD_SETTINGS : DEFAULT_NOTESHEET_SETTINGS;
   return {
     version: 1,
     id: 'sheet-' + Date.now().toString(36),
     title,
-    settings: { ...DEFAULT_NOTESHEET_SETTINGS },
+    settings: { ...baseSettings, ...customSettings },
     categories: [...DEFAULT_CATEGORIES],
     pages: [
       {
         id: 'front',
-        name: 'Front (Page 1)',
+        name: isCard ? 'Front (Card 1)' : 'Front (Page 1)',
         items: []
       },
       {
         id: 'back',
-        name: 'Back (Page 2)',
+        name: isCard ? 'Back (Card 2)' : 'Back (Page 2)',
         items: []
       }
     ]
