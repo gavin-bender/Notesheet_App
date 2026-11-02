@@ -46,6 +46,7 @@ export interface NotesheetSettings {
   notecardFontStyle?: NotecardFontStyle; // handwritten (Caveat/Noteworthy) vs standard sans
   notecardRuledSide?: NotecardRuledSide; // front (standard 1-sided ruled), both, or none
   notecardLines?: number; // custom number of lines (default: 10 in landscape, 18 in portrait)
+  notecardTwoLineEquations?: boolean; // allow big equations (fractions, roots, display math) to span 2 lines
   viewZoom?: number;      // Viewport display zoom scale: 0.5 - 3.0 (default: 1.5 for card3x5, 1.0 for paper)
 }
 
@@ -73,6 +74,7 @@ export interface PluginSettings {
   defaultNotecardFontStyle: NotecardFontStyle;
   defaultNotecardRuledSide: NotecardRuledSide;
   defaultNotecardLines: number;
+  defaultNotecardTwoLineEquations: boolean;
 }
 
 export const DEFAULT_CATEGORIES: NotesheetCategory[] = [
@@ -118,6 +120,7 @@ export const DEFAULT_NOTECARD_SETTINGS: NotesheetSettings = {
   notecardFontStyle: 'handwritten',
   notecardRuledSide: 'front',
   notecardLines: 10,
+  notecardTwoLineEquations: false,
 };
 
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
@@ -135,6 +138,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   defaultNotecardFontStyle: 'handwritten',
   defaultNotecardRuledSide: 'front',
   defaultNotecardLines: 10,
+  defaultNotecardTwoLineEquations: false,
 };
 
 export function createDefaultNotesheetData(

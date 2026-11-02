@@ -413,6 +413,24 @@ export class NotesheetToolbar {
         this.data.settings.notecardRuledSide = ruleSelect.value as any;
         await this.callbacks.onSettingChange();
       });
+
+      // Equations Line Span Selector (1 line compact vs 2 lines for big equations)
+      const eqGroup = row2.createDiv({ cls: 'toolbar-group' });
+      eqGroup.createSpan({ text: 'Equations:', cls: 'group-label' });
+      const eqSelect = eqGroup.createEl('select', { cls: 'notesheet-select' });
+      const currentEq = this.data.settings.notecardTwoLineEquations ? '2-lines' : '1-line';
+      [
+        { id: '1-line', name: '1 Line (Compact)' },
+        { id: '2-lines', name: '2 Lines (Large)' }
+      ].forEach(opt => {
+        const el = eqSelect.createEl('option', { text: opt.name, value: opt.id });
+        if (currentEq === opt.id) el.selected = true;
+      });
+      eqSelect.title = 'Option to let big equations (fractions, roots, display math) span 2 ruled lines for improved readability';
+      eqSelect.addEventListener('change', async () => {
+        this.data.settings.notecardTwoLineEquations = eqSelect.value === '2-lines';
+        await this.callbacks.onSettingChange();
+      });
     }
 
     // Toggle Card Borders

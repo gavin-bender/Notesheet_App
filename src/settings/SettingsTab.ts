@@ -184,6 +184,19 @@ export class NotesheetSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName('Default Notecard Big Equations')
+      .setDesc('Allow big equations (fractions, roots, display formulas) to span 2 ruled lines for improved readability')
+      .addDropdown(dd => {
+        dd.addOption('1-line', '1 Line (Compact)');
+        dd.addOption('2-lines', '2 Lines (Large)');
+        dd.setValue(this.plugin.settings.defaultNotecardTwoLineEquations ? '2-lines' : '1-line');
+        dd.onChange(async (val) => {
+          this.plugin.settings.defaultNotecardTwoLineEquations = val === '2-lines';
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
       .setName('Notesheet Folder')
       .setDesc('Folder in vault to store newly created notesheet files (leave empty for vault root)')
       .addText(text => {

@@ -422,8 +422,9 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       });
     }
 
+    const isTwoLineEq = Boolean(this.data.settings.notecardTwoLineEquations);
     const pageSheet = pageParent.createDiv({
-      cls: `notesheet-page-sheet paper-${pageSize} orientation-${orientation} margin-${this.data.settings.margins} page-side-${page.id} ${isRuled ? 'is-ruled' : 'is-blank'} font-style-${fontStyle}`,
+      cls: `notesheet-page-sheet paper-${pageSize} orientation-${orientation} margin-${this.data.settings.margins} page-side-${page.id} ${isRuled ? 'is-ruled' : 'is-blank'} font-style-${fontStyle} ${isTwoLineEq ? 'has-2line-equations' : ''}`,
       ...(!isCard ? { attr: { id: `notesheet-page-${page.id}` } } : {})
     });
 
@@ -771,15 +772,23 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       const defaultLines = isLandscape ? 10 : 18;
       const lineCount = this.data.settings.notecardLines || defaultLines;
       const linePitch = paperHeight / lineCount;
+      const twoLineEqs = Boolean(this.data.settings.notecardTwoLineEquations);
 
       const bodyElements = pageSheetEl.querySelectorAll<HTMLElement>(
         '.notesheet-card-body p, .notesheet-card-body .math-block, .notesheet-card-body li, .notesheet-card-body pre, .notesheet-card-body table'
       );
       bodyElements.forEach((el) => {
         el.style.minHeight = '';
+        const isBig = (twoLineEqs && !!el.querySelector('mjx-container[display="true"], .math-block, [data-mml-node="mfrac"], [data-mml-node="msqrt"], [data-mml-node="munderover"], [data-mml-node="mtable"], mjx-frac, mjx-sqrt, mjx-over, mjx-under, mjx-table, .mfrac, .sqrt, .katex-display')) || el.classList.contains('two-lines') || el.classList.contains('math-block') || !!el.querySelector('.math-block, mjx-container[display="true"]');
+        if (isBig) {
+          el.classList.add('is-2line-equation');
+        } else {
+          el.classList.remove('is-2line-equation');
+        }
         const h = el.offsetHeight || Math.round(el.getBoundingClientRect().height / zoomFactor);
         if (h > 0) {
-          const linesNeeded = Math.max(1, Math.round(h / linePitch));
+          const minLines = isBig ? 2 : 1;
+          const linesNeeded = Math.max(minLines, Math.round(h / linePitch));
           el.style.minHeight = `${linesNeeded * linePitch}px`;
         }
       });

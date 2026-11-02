@@ -778,6 +778,50 @@
   box-sizing: border-box !important;
 }
 
+/* 2-Line Big Equations on Notecards */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation {
+  min-height: calc(var(--notecard-line-pitch) * 2) !important;
+  line-height: calc(var(--notecard-line-pitch) * 2) !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .math,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .math-inline,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex {
+  font-size: 1.12em !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container > svg {
+  max-height: calc(var(--notecard-line-pitch) * 2 - 5px) !important;
+  height: auto !important;
+  width: auto !important;
+  vertical-align: middle !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex-html {
+  vertical-align: middle !important;
+  line-height: 1 !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex .mfrac,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container[jax="CHTML"] mjx-frac,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-frac,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-mfrac {
+  font-size: 0.9em !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+  transform: translateY(-0.5px) !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex .sqrt,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container[jax="CHTML"] mjx-sqrt,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-sqrt {
+  font-size: 0.9em !important;
+  vertical-align: middle !important;
+}
+
 /* Empty State on Notecard */
 .notesheet-page-sheet.paper-card3x5 .notesheet-empty-state {
   padding: 14px 10px;
@@ -2643,6 +2687,50 @@ body > .print.notesheet-print-container,
     justify-content: center !important;
     line-height: calc(var(--notecard-line-pitch) * 2) !important;
     box-sizing: border-box !important;
+  }
+
+  /* 2-Line Big Equations on Notecards (Print) */
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation {
+    min-height: calc(var(--notecard-line-pitch) * 2) !important;
+    line-height: calc(var(--notecard-line-pitch) * 2) !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .math,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .math-inline,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex {
+    font-size: 1.12em !important;
+    vertical-align: middle !important;
+    line-height: 1 !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container > svg {
+    max-height: calc(var(--notecard-line-pitch) * 2 - 5px) !important;
+    height: auto !important;
+    width: auto !important;
+    vertical-align: middle !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex-html {
+    vertical-align: middle !important;
+    line-height: 1 !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex .mfrac,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container[jax="CHTML"] mjx-frac,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-frac,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-mfrac {
+    font-size: 0.9em !important;
+    vertical-align: middle !important;
+    line-height: 1 !important;
+    transform: translateY(-0.5px) !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation .katex .sqrt,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-container[jax="CHTML"] mjx-sqrt,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .is-2line-equation mjx-sqrt {
+    font-size: 0.9em !important;
+    vertical-align: middle !important;
   }
 
   /* Page breaks between sheets: break after each page except the last */

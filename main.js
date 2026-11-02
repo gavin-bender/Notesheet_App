@@ -75,7 +75,8 @@ var DEFAULT_NOTECARD_SETTINGS = {
   showCategoryTitles: false,
   notecardFontStyle: "handwritten",
   notecardRuledSide: "front",
-  notecardLines: 10
+  notecardLines: 10,
+  notecardTwoLineEquations: false
 };
 var DEFAULT_PLUGIN_SETTINGS = {
   defaultColumns: 2,
@@ -91,7 +92,8 @@ var DEFAULT_PLUGIN_SETTINGS = {
   confirmCardDelete: false,
   defaultNotecardFontStyle: "handwritten",
   defaultNotecardRuledSide: "front",
-  defaultNotecardLines: 10
+  defaultNotecardLines: 10,
+  defaultNotecardTwoLineEquations: false
 };
 function createDefaultNotesheetData(title = "Exam Notesheet", customSettings) {
   const isCard = customSettings?.pageSize === "card3x5";
@@ -182,6 +184,9 @@ ${jsonStr}
         }
         if (!parsed.settings.notecardLines) {
           parsed.settings.notecardLines = parsed.settings.orientation === "portrait" ? 18 : 10;
+        }
+        if (parsed.settings.notecardTwoLineEquations === void 0) {
+          parsed.settings.notecardTwoLineEquations = false;
         }
       }
     };
@@ -954,6 +959,22 @@ var NotesheetToolbar = class {
       ruleSelect.title = "Ruling lines: real index cards have lines on front and are blank on back";
       ruleSelect.addEventListener("change", async () => {
         this.data.settings.notecardRuledSide = ruleSelect.value;
+        await this.callbacks.onSettingChange();
+      });
+      const eqGroup = row2.createDiv({ cls: "toolbar-group" });
+      eqGroup.createSpan({ text: "Equations:", cls: "group-label" });
+      const eqSelect = eqGroup.createEl("select", { cls: "notesheet-select" });
+      const currentEq = this.data.settings.notecardTwoLineEquations ? "2-lines" : "1-line";
+      [
+        { id: "1-line", name: "1 Line (Compact)" },
+        { id: "2-lines", name: "2 Lines (Large)" }
+      ].forEach((opt) => {
+        const el = eqSelect.createEl("option", { text: opt.name, value: opt.id });
+        if (currentEq === opt.id) el.selected = true;
+      });
+      eqSelect.title = "Option to let big equations (fractions, roots, display math) span 2 ruled lines for improved readability";
+      eqSelect.addEventListener("change", async () => {
+        this.data.settings.notecardTwoLineEquations = eqSelect.value === "2-lines";
         await this.callbacks.onSettingChange();
       });
     }
@@ -2501,8 +2522,9 @@ var NotesheetView = class extends import_obsidian11.ItemView {
         cls: "page-stats"
       });
     }
+    const isTwoLineEq = Boolean(this.data.settings.notecardTwoLineEquations);
     const pageSheet = pageParent.createDiv({
-      cls: `notesheet-page-sheet paper-${pageSize} orientation-${orientation} margin-${this.data.settings.margins} page-side-${page.id} ${isRuled ? "is-ruled" : "is-blank"} font-style-${fontStyle}`,
+      cls: `notesheet-page-sheet paper-${pageSize} orientation-${orientation} margin-${this.data.settings.margins} page-side-${page.id} ${isRuled ? "is-ruled" : "is-blank"} font-style-${fontStyle} ${isTwoLineEq ? "has-2line-equations" : ""}`,
       ...!isCard ? { attr: { id: `notesheet-page-${page.id}` } } : {}
     });
     if (isCard) {
@@ -2769,14 +2791,22 @@ var NotesheetView = class extends import_obsidian11.ItemView {
       const defaultLines = isLandscape ? 10 : 18;
       const lineCount = this.data.settings.notecardLines || defaultLines;
       const linePitch = paperHeight / lineCount;
+      const twoLineEqs = Boolean(this.data.settings.notecardTwoLineEquations);
       const bodyElements = pageSheetEl.querySelectorAll(
         ".notesheet-card-body p, .notesheet-card-body .math-block, .notesheet-card-body li, .notesheet-card-body pre, .notesheet-card-body table"
       );
       bodyElements.forEach((el) => {
         el.style.minHeight = "";
+        const isBig = twoLineEqs && !!el.querySelector('mjx-container[display="true"], .math-block, [data-mml-node="mfrac"], [data-mml-node="msqrt"], [data-mml-node="munderover"], [data-mml-node="mtable"], mjx-frac, mjx-sqrt, mjx-over, mjx-under, mjx-table, .mfrac, .sqrt, .katex-display') || el.classList.contains("two-lines") || el.classList.contains("math-block") || !!el.querySelector('.math-block, mjx-container[display="true"]');
+        if (isBig) {
+          el.classList.add("is-2line-equation");
+        } else {
+          el.classList.remove("is-2line-equation");
+        }
         const h = el.offsetHeight || Math.round(el.getBoundingClientRect().height / zoomFactor);
         if (h > 0) {
-          const linesNeeded = Math.max(1, Math.round(h / linePitch));
+          const minLines = isBig ? 2 : 1;
+          const linesNeeded = Math.max(minLines, Math.round(h / linePitch));
           el.style.minHeight = `${linesNeeded * linePitch}px`;
         }
       });
@@ -3100,6 +3130,15 @@ var NotesheetSettingTab = class extends import_obsidian12.PluginSettingTab {
       dd.setValue((this.plugin.settings.defaultNotecardLines || 10).toString());
       dd.onChange(async (val) => {
         this.plugin.settings.defaultNotecardLines = parseInt(val, 10);
+        await this.plugin.saveSettings();
+      });
+    });
+    new import_obsidian12.Setting(containerEl).setName("Default Notecard Big Equations").setDesc("Allow big equations (fractions, roots, display formulas) to span 2 ruled lines for improved readability").addDropdown((dd) => {
+      dd.addOption("1-line", "1 Line (Compact)");
+      dd.addOption("2-lines", "2 Lines (Large)");
+      dd.setValue(this.plugin.settings.defaultNotecardTwoLineEquations ? "2-lines" : "1-line");
+      dd.onChange(async (val) => {
+        this.plugin.settings.defaultNotecardTwoLineEquations = val === "2-lines";
         await this.plugin.saveSettings();
       });
     });

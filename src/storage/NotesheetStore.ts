@@ -70,6 +70,9 @@ ${jsonStr}
         if (!parsed.settings.notecardLines) {
           parsed.settings.notecardLines = parsed.settings.orientation === 'portrait' ? 18 : 10;
         }
+        if (parsed.settings.notecardTwoLineEquations === undefined) {
+          parsed.settings.notecardTwoLineEquations = false;
+        }
       }
     };
 
