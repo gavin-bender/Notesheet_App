@@ -23,6 +23,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   private initialEditCardId: string | null = null;
   private pageObservers: ResizeObserver[] = [];
   private viewZoom: number = 1.0;
+  private pendingZoom: number = 1.0;
+  private isZooming: boolean = false;
   private zoomContainerEl: HTMLElement | null = null;
   private pagesWrapperEl: HTMLElement | null = null;
   private toolbar: NotesheetToolbar | null = null;
@@ -256,16 +258,31 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   }
 
   private setupZoomInteractions(pagesWrapper: HTMLElement): void {
+    this.pendingZoom = this.viewZoom;
+    let zoomRafId: number | null = null;
+    let zoomEndTimer: number | null = null;
+
     // Trackpad Pinch-to-zoom (Wheel event with ctrlKey on macOS/Windows)
     pagesWrapper.addEventListener('wheel', (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
-        // deltaY is negative when pinching open (zooming in), positive when pinching closed (zooming out)
-        const delta = -e.deltaY * 0.006;
-        const nextZoom = Math.min(3.0, Math.max(0.5, parseFloat((this.viewZoom + delta).toFixed(2))));
-        if (Math.abs(nextZoom - this.viewZoom) >= 0.01) {
-          this.setViewZoom(nextZoom);
+
+        this.isZooming = true;
+        if (zoomEndTimer) window.clearTimeout(zoomEndTimer);
+        zoomEndTimer = window.setTimeout(() => {
+          this.isZooming = false;
+        }, 150);
+
+        // Exponential zoom scaling: smooth and uniform across the entire 0.5x - 3.0x range
+        const factor = Math.exp(-e.deltaY * 0.005);
+        this.pendingZoom = Math.min(3.0, Math.max(0.5, this.pendingZoom * factor));
+
+        if (!zoomRafId) {
+          zoomRafId = requestAnimationFrame(() => {
+            this.setViewZoom(this.pendingZoom);
+            zoomRafId = null;
+          });
         }
       }
     }, { passive: false });
@@ -273,14 +290,17 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     // Touchscreen 2-finger pinch gesture
     let initialTouchDist = 0;
     let initialTouchZoom = 1.0;
+    let touchRafId: number | null = null;
 
     pagesWrapper.addEventListener('touchstart', (e: TouchEvent) => {
       if (e.touches.length === 2) {
         e.preventDefault();
+        this.isZooming = true;
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         initialTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         initialTouchZoom = this.viewZoom;
+        this.pendingZoom = this.viewZoom;
       }
     }, { passive: false });
 
@@ -291,14 +311,24 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         const t2 = e.touches[1];
         const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         const scale = currentDist / initialTouchDist;
-        const nextZoom = Math.min(3.0, Math.max(0.5, parseFloat((initialTouchZoom * scale).toFixed(2))));
-        this.setViewZoom(nextZoom);
+        this.pendingZoom = Math.min(3.0, Math.max(0.5, initialTouchZoom * scale));
+
+        if (!touchRafId) {
+          touchRafId = requestAnimationFrame(() => {
+            this.setViewZoom(this.pendingZoom);
+            touchRafId = null;
+          });
+        }
       }
     }, { passive: false });
 
     pagesWrapper.addEventListener('touchend', (e: TouchEvent) => {
       if (e.touches.length < 2) {
         initialTouchDist = 0;
+        if (zoomEndTimer) window.clearTimeout(zoomEndTimer);
+        zoomEndTimer = window.setTimeout(() => {
+          this.isZooming = false;
+        }, 150);
       }
     });
   }
@@ -306,6 +336,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   public setViewZoom(zoom: number, save = true): void {
     const clampedZoom = Math.min(3.0, Math.max(0.5, parseFloat(zoom.toFixed(2))));
     this.viewZoom = clampedZoom;
+    this.pendingZoom = clampedZoom;
 
     if (this.zoomContainerEl) {
       this.zoomContainerEl.style.zoom = `${clampedZoom}`;
@@ -645,7 +676,27 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
     if (typeof ResizeObserver !== 'undefined') {
       let rAF: number | null = null;
-      const observer = new ResizeObserver(() => {
+      let lastUnzoomedW = 0;
+      let lastUnzoomedH = 0;
+
+      const observer = new ResizeObserver((entries) => {
+        // While user is actively pinching/zooming, completely skip auto-fit layout
+        if (this.isZooming) return;
+
+        const entry = entries[0];
+        if (entry) {
+          // Normalize by display zoom so optical zooming does NOT trigger expensive DOM refits
+          const curZoom = this.viewZoom || 1.0;
+          const unzoomedW = Math.round(entry.contentRect.width / curZoom);
+          const unzoomedH = Math.round(entry.contentRect.height / curZoom);
+
+          if (Math.abs(unzoomedW - lastUnzoomedW) < 2 && Math.abs(unzoomedH - lastUnzoomedH) < 2) {
+            return;
+          }
+          lastUnzoomedW = unzoomedW;
+          lastUnzoomedH = unzoomedH;
+        }
+
         if (rAF) cancelAnimationFrame(rAF);
         rAF = requestAnimationFrame(() => {
           runFit();

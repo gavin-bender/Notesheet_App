@@ -2161,6 +2161,8 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     this.initialEditCardId = null;
     this.pageObservers = [];
     this.viewZoom = 1;
+    this.pendingZoom = 1;
+    this.isZooming = false;
     this.zoomContainerEl = null;
     this.pagesWrapperEl = null;
     this.toolbar = null;
@@ -2364,26 +2366,40 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     this.setupZoomInteractions(this.pagesWrapperEl);
   }
   setupZoomInteractions(pagesWrapper) {
+    this.pendingZoom = this.viewZoom;
+    let zoomRafId = null;
+    let zoomEndTimer = null;
     pagesWrapper.addEventListener("wheel", (e) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         e.stopPropagation();
-        const delta = -e.deltaY * 6e-3;
-        const nextZoom = Math.min(3, Math.max(0.5, parseFloat((this.viewZoom + delta).toFixed(2))));
-        if (Math.abs(nextZoom - this.viewZoom) >= 0.01) {
-          this.setViewZoom(nextZoom);
+        this.isZooming = true;
+        if (zoomEndTimer) window.clearTimeout(zoomEndTimer);
+        zoomEndTimer = window.setTimeout(() => {
+          this.isZooming = false;
+        }, 150);
+        const factor = Math.exp(-e.deltaY * 5e-3);
+        this.pendingZoom = Math.min(3, Math.max(0.5, this.pendingZoom * factor));
+        if (!zoomRafId) {
+          zoomRafId = requestAnimationFrame(() => {
+            this.setViewZoom(this.pendingZoom);
+            zoomRafId = null;
+          });
         }
       }
     }, { passive: false });
     let initialTouchDist = 0;
     let initialTouchZoom = 1;
+    let touchRafId = null;
     pagesWrapper.addEventListener("touchstart", (e) => {
       if (e.touches.length === 2) {
         e.preventDefault();
+        this.isZooming = true;
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         initialTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         initialTouchZoom = this.viewZoom;
+        this.pendingZoom = this.viewZoom;
       }
     }, { passive: false });
     pagesWrapper.addEventListener("touchmove", (e) => {
@@ -2393,19 +2409,29 @@ var NotesheetView = class extends import_obsidian11.ItemView {
         const t2 = e.touches[1];
         const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
         const scale = currentDist / initialTouchDist;
-        const nextZoom = Math.min(3, Math.max(0.5, parseFloat((initialTouchZoom * scale).toFixed(2))));
-        this.setViewZoom(nextZoom);
+        this.pendingZoom = Math.min(3, Math.max(0.5, initialTouchZoom * scale));
+        if (!touchRafId) {
+          touchRafId = requestAnimationFrame(() => {
+            this.setViewZoom(this.pendingZoom);
+            touchRafId = null;
+          });
+        }
       }
     }, { passive: false });
     pagesWrapper.addEventListener("touchend", (e) => {
       if (e.touches.length < 2) {
         initialTouchDist = 0;
+        if (zoomEndTimer) window.clearTimeout(zoomEndTimer);
+        zoomEndTimer = window.setTimeout(() => {
+          this.isZooming = false;
+        }, 150);
       }
     });
   }
   setViewZoom(zoom, save = true) {
     const clampedZoom = Math.min(3, Math.max(0.5, parseFloat(zoom.toFixed(2))));
     this.viewZoom = clampedZoom;
+    this.pendingZoom = clampedZoom;
     if (this.zoomContainerEl) {
       this.zoomContainerEl.style.zoom = `${clampedZoom}`;
     }
@@ -2674,7 +2700,21 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     };
     if (typeof ResizeObserver !== "undefined") {
       let rAF = null;
-      const observer = new ResizeObserver(() => {
+      let lastUnzoomedW = 0;
+      let lastUnzoomedH = 0;
+      const observer = new ResizeObserver((entries) => {
+        if (this.isZooming) return;
+        const entry = entries[0];
+        if (entry) {
+          const curZoom = this.viewZoom || 1;
+          const unzoomedW = Math.round(entry.contentRect.width / curZoom);
+          const unzoomedH = Math.round(entry.contentRect.height / curZoom);
+          if (Math.abs(unzoomedW - lastUnzoomedW) < 2 && Math.abs(unzoomedH - lastUnzoomedH) < 2) {
+            return;
+          }
+          lastUnzoomedW = unzoomedW;
+          lastUnzoomedH = unzoomedH;
+        }
         if (rAF) cancelAnimationFrame(rAF);
         rAF = requestAnimationFrame(() => {
           runFit();

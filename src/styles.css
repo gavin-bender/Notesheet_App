@@ -290,7 +290,6 @@
   width: 100%;
   box-sizing: border-box;
   transform-origin: top center;
-  transition: zoom 0.05s ease-out;
 }
 
 .notesheet-page-sheet {
@@ -301,7 +300,6 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: transform 0.2s ease;
   width: 816px;
   max-width: 816px;
   min-height: 1056px;
