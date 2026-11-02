@@ -2758,7 +2758,7 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     }
     const headerH = !isCard && headerEl ? headerEl.offsetHeight + 8 : 0;
     const footerH = !isCard && footerEl ? footerEl.offsetHeight + 8 : 0;
-    const safetyMargin = isCard ? 2 : 24;
+    const safetyMargin = isCard ? 0 : 24;
     const availableHeight = paperHeight - marginPx * 2 - headerH - footerH - safetyMargin;
     const cols = Array.from(grid.querySelectorAll(".notesheet-column"));
     if (cols.length === 0) return;
@@ -2770,13 +2770,13 @@ var NotesheetView = class extends import_obsidian11.ItemView {
       const lineCount = this.data.settings.notecardLines || defaultLines;
       const linePitch = paperHeight / lineCount;
       const bodyElements = pageSheetEl.querySelectorAll(
-        ".notesheet-card-body p, .notesheet-card-body .math-block, .notesheet-card-body ul, .notesheet-card-body ol, .notesheet-card-body li, .notesheet-card-body pre, .notesheet-card-body table"
+        ".notesheet-card-body p, .notesheet-card-body .math-block, .notesheet-card-body li, .notesheet-card-body pre, .notesheet-card-body table"
       );
       bodyElements.forEach((el) => {
         el.style.minHeight = "";
         const h = el.offsetHeight || Math.round(el.getBoundingClientRect().height / zoomFactor);
         if (h > 0) {
-          const linesNeeded = Math.max(1, Math.ceil((h - 1.5) / linePitch));
+          const linesNeeded = Math.max(1, Math.round(h / linePitch));
           el.style.minHeight = `${linesNeeded * linePitch}px`;
         }
       });

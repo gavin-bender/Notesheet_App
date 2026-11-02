@@ -753,8 +753,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const headerH = (!isCard && headerEl) ? (headerEl.offsetHeight + 8) : 0;
     const footerH = (!isCard && footerEl) ? (footerEl.offsetHeight + 8) : 0;
 
-    // Safety margin for print rendering tolerances
-    const safetyMargin = isCard ? 2 : 24;
+    // Safety margin for print rendering tolerances (0 for notecards so full ruling height is available)
+    const safetyMargin = isCard ? 0 : 24;
     const availableHeight = paperHeight - (marginPx * 2) - headerH - footerH - safetyMargin;
 
     const cols = Array.from(grid.querySelectorAll<HTMLElement>('.notesheet-column'));
@@ -773,13 +773,13 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       const linePitch = paperHeight / lineCount;
 
       const bodyElements = pageSheetEl.querySelectorAll<HTMLElement>(
-        '.notesheet-card-body p, .notesheet-card-body .math-block, .notesheet-card-body ul, .notesheet-card-body ol, .notesheet-card-body li, .notesheet-card-body pre, .notesheet-card-body table'
+        '.notesheet-card-body p, .notesheet-card-body .math-block, .notesheet-card-body li, .notesheet-card-body pre, .notesheet-card-body table'
       );
       bodyElements.forEach((el) => {
         el.style.minHeight = '';
         const h = el.offsetHeight || Math.round(el.getBoundingClientRect().height / zoomFactor);
         if (h > 0) {
-          const linesNeeded = Math.max(1, Math.ceil((h - 1.5) / linePitch));
+          const linesNeeded = Math.max(1, Math.round(h / linePitch));
           el.style.minHeight = `${linesNeeded * linePitch}px`;
         }
       });

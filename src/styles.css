@@ -721,22 +721,42 @@
 /* Compact math styling for notecards: fractions and equations never break ruled line baselines */
 .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math,
 .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-inline,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container,
 .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex {
+  display: inline-block !important;
+  vertical-align: 0.15em !important;
+  line-height: 1 !important;
   font-size: 0.9em !important;
+}
+
+/* MathJax SVG Sizing: Restrict SVG height directly to line-pitch so tall equations/fractions fit inside line */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container > svg {
+  max-height: calc(var(--notecard-line-pitch) - 3.5px) !important;
+  height: auto !important;
+  width: auto !important;
+  vertical-align: middle !important;
+}
+
+/* MathJax CHTML & KaTeX fractions sizing & alignment */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex-html {
+  vertical-align: middle !important;
   line-height: 1 !important;
 }
 
 .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac,
-.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-frac {
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-frac,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-frac,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-mfrac {
   display: inline-block !important;
-  transform: scale(0.75) !important;
-  transform-origin: center center !important;
+  font-size: 0.72em !important;
   vertical-align: middle !important;
-  margin: 0 -1.5px !important;
+  line-height: 1 !important;
+  transform: translateY(-0.5px) !important;
 }
 
 .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .sqrt,
-.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-sqrt {
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-sqrt,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-sqrt {
   display: inline-block !important;
   vertical-align: middle !important;
 }
@@ -750,7 +770,7 @@
 .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-block {
   margin: 0 !important;
   padding: 0 !important;
-  min-height: calc(var(--notecard-line-pitch) * 2) !important;
+  min-height: calc(var(--notecard-line-pitch) * 2);
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -2572,22 +2592,40 @@ body > .print.notesheet-print-container,
 
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-inline,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex {
+    display: inline-block !important;
+    vertical-align: 0.15em !important;
+    line-height: 1 !important;
     font-size: 0.9em !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container > svg {
+    max-height: calc(var(--notecard-line-pitch) - 3.5px) !important;
+    height: auto !important;
+    width: auto !important;
+    vertical-align: middle !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex-html {
+    vertical-align: middle !important;
     line-height: 1 !important;
   }
 
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac,
-  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-frac {
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-frac,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-frac,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-mfrac {
     display: inline-block !important;
-    transform: scale(0.75) !important;
-    transform-origin: center center !important;
+    font-size: 0.72em !important;
     vertical-align: middle !important;
-    margin: 0 -1.5px !important;
+    line-height: 1 !important;
+    transform: translateY(-0.5px) !important;
   }
 
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .sqrt,
-  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-sqrt {
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-sqrt,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-sqrt {
     display: inline-block !important;
     vertical-align: middle !important;
   }
@@ -2599,7 +2637,7 @@ body > .print.notesheet-print-container,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-block {
     margin: 0 !important;
     padding: 0 !important;
-    min-height: calc(var(--notecard-line-pitch) * 2) !important;
+    min-height: calc(var(--notecard-line-pitch) * 2);
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
