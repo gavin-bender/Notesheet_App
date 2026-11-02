@@ -257,7 +257,8 @@ ${jsonStr}
       notecardLines: 10,
       notecardFontStyle: "handwritten",
       notecardRuledSide: "front",
-      showCategoryTitles: false
+      showCategoryTitles: false,
+      viewZoom: 1.5
     });
   }
   /**
@@ -629,11 +630,14 @@ var import_obsidian11 = require("obsidian");
 // src/view/Toolbar.ts
 var import_obsidian3 = require("obsidian");
 var NotesheetToolbar = class {
-  constructor(app, data, activeTab, callbacks) {
+  constructor(app, data, activeTab, callbacks, currentZoom = 1) {
+    this.currentZoom = 1;
+    this.zoomLabelEl = null;
     this.app = app;
     this.data = data;
     this.activeTab = activeTab;
     this.callbacks = callbacks;
+    this.currentZoom = currentZoom;
   }
   render(container) {
     this.containerEl = container.createDiv({ cls: "notesheet-toolbar" });
@@ -694,6 +698,38 @@ var NotesheetToolbar = class {
       syncIcon.addClass("rotating");
       await this.callbacks.onSyncAll();
       setTimeout(() => syncIcon.removeClass("rotating"), 600);
+    });
+    const zoomGroup = actionsContainer.createDiv({ cls: "toolbar-zoom-group" });
+    const zoomOutBtn = zoomGroup.createEl("button", { cls: "toolbar-zoom-btn zoom-out" });
+    (0, import_obsidian3.setIcon)(zoomOutBtn, "minus");
+    zoomOutBtn.title = "Zoom out (\u2212) or pinch trackpad";
+    zoomOutBtn.addEventListener("click", () => {
+      const nextZoom = Math.max(0.5, parseFloat((this.currentZoom - 0.15).toFixed(2)));
+      this.currentZoom = nextZoom;
+      this.updateZoomDisplay(nextZoom);
+      this.callbacks.onZoomChange?.(nextZoom);
+    });
+    this.zoomLabelEl = zoomGroup.createEl("button", {
+      cls: "toolbar-zoom-label",
+      text: `${Math.round(this.currentZoom * 100)}%`
+    });
+    this.zoomLabelEl.title = "Display zoom level. Click to reset";
+    this.zoomLabelEl.addEventListener("click", () => {
+      const isCard2 = this.data.settings.pageSize === "card3x5";
+      const defaultZoom = isCard2 ? 1.5 : 1;
+      const nextZoom = Math.abs(this.currentZoom - defaultZoom) < 0.05 ? isCard2 ? 1 : 1.5 : defaultZoom;
+      this.currentZoom = nextZoom;
+      this.updateZoomDisplay(nextZoom);
+      this.callbacks.onZoomChange?.(nextZoom);
+    });
+    const zoomInBtn = zoomGroup.createEl("button", { cls: "toolbar-zoom-btn zoom-in" });
+    (0, import_obsidian3.setIcon)(zoomInBtn, "plus");
+    zoomInBtn.title = "Zoom in (+) or pinch trackpad";
+    zoomInBtn.addEventListener("click", () => {
+      const nextZoom = Math.min(3, parseFloat((this.currentZoom + 0.15).toFixed(2)));
+      this.currentZoom = nextZoom;
+      this.updateZoomDisplay(nextZoom);
+      this.callbacks.onZoomChange?.(nextZoom);
     });
     const previewBtn = actionsContainer.createEl("button", {
       cls: "notesheet-btn-toolbar preview-btn"
@@ -819,6 +855,15 @@ var NotesheetToolbar = class {
         if (!this.data.settings.notecardLines) {
           this.data.settings.notecardLines = this.data.settings.orientation === "portrait" ? 18 : 10;
         }
+        const targetZoom = 1.5;
+        this.currentZoom = targetZoom;
+        this.updateZoomDisplay(targetZoom);
+        this.callbacks.onZoomChange?.(targetZoom);
+      } else if (newSize !== "card3x5" && prevSize === "card3x5") {
+        const targetZoom = 1;
+        this.currentZoom = targetZoom;
+        this.updateZoomDisplay(targetZoom);
+        this.callbacks.onZoomChange?.(targetZoom);
       }
       await this.callbacks.onSettingChange();
     });
@@ -965,6 +1010,12 @@ var NotesheetToolbar = class {
       cardTitlesCheck.dispatchEvent(new Event("change"));
     });
     return this.containerEl;
+  }
+  updateZoomDisplay(zoom) {
+    this.currentZoom = zoom;
+    if (this.zoomLabelEl) {
+      this.zoomLabelEl.textContent = `${Math.round(zoom * 100)}%`;
+    }
   }
 };
 
@@ -2109,6 +2160,11 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     this.cardComponents = /* @__PURE__ */ new Map();
     this.initialEditCardId = null;
     this.pageObservers = [];
+    this.viewZoom = 1;
+    this.zoomContainerEl = null;
+    this.pagesWrapperEl = null;
+    this.toolbar = null;
+    this.saveZoomDebounceTimer = null;
     this.handleBeforePrint = () => {
       if (this.containerEl && document.body.contains(this.containerEl) && this.containerEl.offsetWidth > 0) {
         this.setupPrintContainer();
@@ -2166,6 +2222,10 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     });
   }
   async onunload() {
+    if (this.saveZoomDebounceTimer) {
+      window.clearTimeout(this.saveZoomDebounceTimer);
+      this.saveZoomDebounceTimer = null;
+    }
     window.removeEventListener("beforeprint", this.handleBeforePrint);
     window.removeEventListener("afterprint", this.handleAfterPrint);
     this.pageObservers.forEach((obs) => obs.disconnect());
@@ -2233,14 +2293,18 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     container.addClass(`density-${this.data.settings.density || "compact"}`);
     container.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
     container.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
-    const toolbar = new NotesheetToolbar(this.app, this.data, this.activeTab, {
+    const isCard = this.data.settings.pageSize === "card3x5";
+    this.viewZoom = this.data.settings.viewZoom ?? (isCard ? 1.5 : 1);
+    this.toolbar = new NotesheetToolbar(this.app, this.data, this.activeTab, {
       onTabChange: (tab) => {
         this.activeTab = tab;
-        this.updatePageTabVisibility(pagesWrapper);
-        const activeSheet = pagesWrapper.querySelector(
-          tab === "back" ? "#notesheet-page-back" : "#notesheet-page-front"
-        );
-        if (activeSheet) this.updatePageFit(activeSheet);
+        if (this.zoomContainerEl) {
+          this.updatePageTabVisibility(this.zoomContainerEl);
+          const activeSheet = this.zoomContainerEl.querySelector(
+            tab === "back" ? "#notesheet-page-back" : "#notesheet-page-front"
+          );
+          if (activeSheet) this.updatePageFit(activeSheet);
+        }
       },
       onSettingChange: async () => {
         container.removeClass("density-compact", "density-normal");
@@ -2248,7 +2312,12 @@ var NotesheetView = class extends import_obsidian11.ItemView {
         container.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
         container.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
         await this.saveData();
-        this.renderPages(pagesWrapper);
+        if (this.zoomContainerEl) {
+          this.renderPages(this.zoomContainerEl);
+        }
+      },
+      onZoomChange: (newZoom) => {
+        this.setViewZoom(newZoom);
       },
       onAddCard: () => {
         this.promptAddCard();
@@ -2286,10 +2355,72 @@ var NotesheetView = class extends import_obsidian11.ItemView {
           await this.render();
         }).open();
       }
+    }, this.viewZoom);
+    this.toolbar.render(container);
+    this.pagesWrapperEl = container.createDiv({ cls: "notesheet-pages-wrapper" });
+    this.zoomContainerEl = this.pagesWrapperEl.createDiv({ cls: "notesheet-zoom-container" });
+    this.zoomContainerEl.style.zoom = `${this.viewZoom}`;
+    this.renderPages(this.zoomContainerEl);
+    this.setupZoomInteractions(this.pagesWrapperEl);
+  }
+  setupZoomInteractions(pagesWrapper) {
+    pagesWrapper.addEventListener("wheel", (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = -e.deltaY * 6e-3;
+        const nextZoom = Math.min(3, Math.max(0.5, parseFloat((this.viewZoom + delta).toFixed(2))));
+        if (Math.abs(nextZoom - this.viewZoom) >= 0.01) {
+          this.setViewZoom(nextZoom);
+        }
+      }
+    }, { passive: false });
+    let initialTouchDist = 0;
+    let initialTouchZoom = 1;
+    pagesWrapper.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        initialTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        initialTouchZoom = this.viewZoom;
+      }
+    }, { passive: false });
+    pagesWrapper.addEventListener("touchmove", (e) => {
+      if (e.touches.length === 2 && initialTouchDist > 0) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const scale = currentDist / initialTouchDist;
+        const nextZoom = Math.min(3, Math.max(0.5, parseFloat((initialTouchZoom * scale).toFixed(2))));
+        this.setViewZoom(nextZoom);
+      }
+    }, { passive: false });
+    pagesWrapper.addEventListener("touchend", (e) => {
+      if (e.touches.length < 2) {
+        initialTouchDist = 0;
+      }
     });
-    toolbar.render(container);
-    const pagesWrapper = container.createDiv({ cls: "notesheet-pages-wrapper" });
-    this.renderPages(pagesWrapper);
+  }
+  setViewZoom(zoom, save = true) {
+    const clampedZoom = Math.min(3, Math.max(0.5, parseFloat(zoom.toFixed(2))));
+    this.viewZoom = clampedZoom;
+    if (this.zoomContainerEl) {
+      this.zoomContainerEl.style.zoom = `${clampedZoom}`;
+    }
+    if (this.toolbar) {
+      this.toolbar.updateZoomDisplay(clampedZoom);
+    }
+    if (save) {
+      this.data.settings.viewZoom = clampedZoom;
+      if (this.saveZoomDebounceTimer) {
+        window.clearTimeout(this.saveZoomDebounceTimer);
+      }
+      this.saveZoomDebounceTimer = window.setTimeout(async () => {
+        await this.saveData();
+      }, 500);
+    }
   }
   renderPages(container) {
     this.pageObservers.forEach((obs) => obs.disconnect());
@@ -2593,6 +2724,7 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     if (cols.length === 0) return;
     const prevZoom = grid.style.zoom;
     grid.style.zoom = "1";
+    const zoomFactor = this.viewZoom || 1;
     if (isCard) {
       const defaultLines = isLandscape ? 10 : 18;
       const lineCount = this.data.settings.notecardLines || defaultLines;
@@ -2602,7 +2734,7 @@ var NotesheetView = class extends import_obsidian11.ItemView {
       );
       bodyElements.forEach((el) => {
         el.style.minHeight = "";
-        const h = el.getBoundingClientRect().height || el.offsetHeight;
+        const h = el.offsetHeight || Math.round(el.getBoundingClientRect().height / zoomFactor);
         if (h > 0) {
           const linesNeeded = Math.max(1, Math.ceil((h - 1.5) / linePitch));
           el.style.minHeight = `${linesNeeded * linePitch}px`;
@@ -2611,7 +2743,7 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     }
     let maxColH = 0;
     for (const col of cols) {
-      const h = col.getBoundingClientRect().height || col.scrollHeight;
+      const h = col.scrollHeight || Math.round(col.getBoundingClientRect().height / zoomFactor);
       if (h > maxColH) maxColH = h;
     }
     const itemCount = cols.reduce((acc, c) => acc + c.querySelectorAll(".notesheet-card").length, 0);

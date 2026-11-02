@@ -174,7 +174,8 @@ ${jsonStr}
       notecardLines: 10,
       notecardFontStyle: 'handwritten',
       notecardRuledSide: 'front',
-      showCategoryTitles: false
+      showCategoryTitles: false,
+      viewZoom: 1.5
     });
   }
 

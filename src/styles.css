@@ -158,6 +158,65 @@
   filter: brightness(1.1);
 }
 
+/* Toolbar Zoom Control */
+.toolbar-zoom-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--background-primary);
+  border: 1px solid var(--notesheet-border-color);
+  border-radius: 6px;
+  padding: 2px 4px;
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.toolbar-zoom-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.toolbar-zoom-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.toolbar-zoom-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.toolbar-zoom-label {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: center;
+  color: var(--text-normal);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  user-select: none;
+  border: none;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.toolbar-zoom-label:hover {
+  background: var(--background-modifier-hover);
+  color: var(--interactive-accent);
+}
+
 /* Formatting Row */
 .formatting-row {
   font-size: 11px;
@@ -221,6 +280,17 @@
   gap: 32px;
   width: 100%;
   box-sizing: border-box;
+}
+
+.notesheet-zoom-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  box-sizing: border-box;
+  transform-origin: top center;
+  transition: zoom 0.05s ease-out;
 }
 
 .notesheet-page-sheet {

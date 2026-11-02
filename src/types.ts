@@ -46,6 +46,7 @@ export interface NotesheetSettings {
   notecardFontStyle?: NotecardFontStyle; // handwritten (Caveat/Noteworthy) vs standard sans
   notecardRuledSide?: NotecardRuledSide; // front (standard 1-sided ruled), both, or none
   notecardLines?: number; // custom number of lines (default: 10 in landscape, 18 in portrait)
+  viewZoom?: number;      // Viewport display zoom scale: 0.5 - 3.0 (default: 1.5 for card3x5, 1.0 for paper)
 }
 
 export interface NotesheetData {

@@ -22,6 +22,11 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   private cardComponents: Map<string, NotesheetCard> = new Map();
   private initialEditCardId: string | null = null;
   private pageObservers: ResizeObserver[] = [];
+  private viewZoom: number = 1.0;
+  private zoomContainerEl: HTMLElement | null = null;
+  private pagesWrapperEl: HTMLElement | null = null;
+  private toolbar: NotesheetToolbar | null = null;
+  private saveZoomDebounceTimer: number | null = null;
 
   private isAnyCardEditing(): boolean {
     for (const card of this.cardComponents.values()) {
@@ -90,6 +95,10 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
   }
 
   async onunload() {
+    if (this.saveZoomDebounceTimer) {
+      window.clearTimeout(this.saveZoomDebounceTimer);
+      this.saveZoomDebounceTimer = null;
+    }
     window.removeEventListener('beforeprint', this.handleBeforePrint);
     window.removeEventListener('afterprint', this.handleAfterPrint);
     this.pageObservers.forEach(obs => obs.disconnect());
@@ -169,15 +178,20 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     container.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
     container.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
 
+    const isCard = this.data.settings.pageSize === 'card3x5';
+    this.viewZoom = this.data.settings.viewZoom ?? (isCard ? 1.5 : 1.0);
+
     // Toolbar
-    const toolbar = new NotesheetToolbar(this.app, this.data, this.activeTab, {
+    this.toolbar = new NotesheetToolbar(this.app, this.data, this.activeTab, {
       onTabChange: (tab) => {
         this.activeTab = tab;
-        this.updatePageTabVisibility(pagesWrapper);
-        const activeSheet = pagesWrapper.querySelector<HTMLElement>(
-          tab === 'back' ? '#notesheet-page-back' : '#notesheet-page-front'
-        );
-        if (activeSheet) this.updatePageFit(activeSheet);
+        if (this.zoomContainerEl) {
+          this.updatePageTabVisibility(this.zoomContainerEl);
+          const activeSheet = this.zoomContainerEl.querySelector<HTMLElement>(
+            tab === 'back' ? '#notesheet-page-back' : '#notesheet-page-front'
+          );
+          if (activeSheet) this.updatePageFit(activeSheet);
+        }
       },
       onSettingChange: async () => {
         container.removeClass('density-compact', 'density-normal');
@@ -185,7 +199,12 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         container.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
         container.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
         await this.saveData();
-        this.renderPages(pagesWrapper);
+        if (this.zoomContainerEl) {
+          this.renderPages(this.zoomContainerEl);
+        }
+      },
+      onZoomChange: (newZoom) => {
+        this.setViewZoom(newZoom);
       },
       onAddCard: () => {
         this.promptAddCard();
@@ -223,13 +242,88 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
           await this.render();
         }).open();
       }
+    }, this.viewZoom);
+
+    this.toolbar.render(container);
+
+    // Pages scroll wrapper & display zoom container
+    this.pagesWrapperEl = container.createDiv({ cls: 'notesheet-pages-wrapper' });
+    this.zoomContainerEl = this.pagesWrapperEl.createDiv({ cls: 'notesheet-zoom-container' });
+    this.zoomContainerEl.style.zoom = `${this.viewZoom}`;
+
+    this.renderPages(this.zoomContainerEl);
+    this.setupZoomInteractions(this.pagesWrapperEl);
+  }
+
+  private setupZoomInteractions(pagesWrapper: HTMLElement): void {
+    // Trackpad Pinch-to-zoom (Wheel event with ctrlKey on macOS/Windows)
+    pagesWrapper.addEventListener('wheel', (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        // deltaY is negative when pinching open (zooming in), positive when pinching closed (zooming out)
+        const delta = -e.deltaY * 0.006;
+        const nextZoom = Math.min(3.0, Math.max(0.5, parseFloat((this.viewZoom + delta).toFixed(2))));
+        if (Math.abs(nextZoom - this.viewZoom) >= 0.01) {
+          this.setViewZoom(nextZoom);
+        }
+      }
+    }, { passive: false });
+
+    // Touchscreen 2-finger pinch gesture
+    let initialTouchDist = 0;
+    let initialTouchZoom = 1.0;
+
+    pagesWrapper.addEventListener('touchstart', (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        initialTouchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        initialTouchZoom = this.viewZoom;
+      }
+    }, { passive: false });
+
+    pagesWrapper.addEventListener('touchmove', (e: TouchEvent) => {
+      if (e.touches.length === 2 && initialTouchDist > 0) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const scale = currentDist / initialTouchDist;
+        const nextZoom = Math.min(3.0, Math.max(0.5, parseFloat((initialTouchZoom * scale).toFixed(2))));
+        this.setViewZoom(nextZoom);
+      }
+    }, { passive: false });
+
+    pagesWrapper.addEventListener('touchend', (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        initialTouchDist = 0;
+      }
     });
+  }
 
-    toolbar.render(container);
+  public setViewZoom(zoom: number, save = true): void {
+    const clampedZoom = Math.min(3.0, Math.max(0.5, parseFloat(zoom.toFixed(2))));
+    this.viewZoom = clampedZoom;
 
-    // Pages scroll wrapper
-    const pagesWrapper = container.createDiv({ cls: 'notesheet-pages-wrapper' });
-    this.renderPages(pagesWrapper);
+    if (this.zoomContainerEl) {
+      this.zoomContainerEl.style.zoom = `${clampedZoom}`;
+    }
+
+    if (this.toolbar) {
+      this.toolbar.updateZoomDisplay(clampedZoom);
+    }
+
+    if (save) {
+      this.data.settings.viewZoom = clampedZoom;
+      if (this.saveZoomDebounceTimer) {
+        window.clearTimeout(this.saveZoomDebounceTimer);
+      }
+      this.saveZoomDebounceTimer = window.setTimeout(async () => {
+        await this.saveData();
+      }, 500);
+    }
   }
 
   private renderPages(container: HTMLElement): void {
@@ -619,6 +713,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const prevZoom = grid.style.zoom;
     grid.style.zoom = '1';
 
+    const zoomFactor = this.viewZoom || 1.0;
+
     // 3x5 Notecard: Snap lines so large equations or multiline paragraphs never break line alignment
     if (isCard) {
       const defaultLines = isLandscape ? 10 : 18;
@@ -630,7 +726,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       );
       bodyElements.forEach((el) => {
         el.style.minHeight = '';
-        const h = el.getBoundingClientRect().height || el.offsetHeight;
+        const h = el.offsetHeight || Math.round(el.getBoundingClientRect().height / zoomFactor);
         if (h > 0) {
           const linesNeeded = Math.max(1, Math.ceil((h - 1.5) / linePitch));
           el.style.minHeight = `${linesNeeded * linePitch}px`;
@@ -640,7 +736,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
     let maxColH = 0;
     for (const col of cols) {
-      const h = col.getBoundingClientRect().height || col.scrollHeight;
+      const h = col.scrollHeight || Math.round(col.getBoundingClientRect().height / zoomFactor);
       if (h > maxColH) maxColH = h;
     }
 

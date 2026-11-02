@@ -11,6 +11,7 @@ export interface ToolbarCallbacks {
   onSyncAll: () => Promise<void>;
   onTitleChange: (newTitle: string) => Promise<void>;
   onOpenCategoryManager: () => void;
+  onZoomChange?: (newZoom: number) => void;
 }
 
 export class NotesheetToolbar {
@@ -19,17 +20,21 @@ export class NotesheetToolbar {
   private activeTab: 'front' | 'back' | 'both';
   private callbacks: ToolbarCallbacks;
   private containerEl: HTMLElement;
+  private currentZoom: number = 1.0;
+  private zoomLabelEl: HTMLElement | null = null;
 
   constructor(
     app: App,
     data: NotesheetData,
     activeTab: 'front' | 'back' | 'both',
-    callbacks: ToolbarCallbacks
+    callbacks: ToolbarCallbacks,
+    currentZoom: number = 1.0
   ) {
     this.app = app;
     this.data = data;
     this.activeTab = activeTab;
     this.callbacks = callbacks;
+    this.currentZoom = currentZoom;
   }
 
   public render(container: HTMLElement): HTMLElement {
@@ -110,6 +115,45 @@ export class NotesheetToolbar {
       syncIcon.addClass('rotating');
       await this.callbacks.onSyncAll();
       setTimeout(() => syncIcon.removeClass('rotating'), 600);
+    });
+
+    // Zoom Controls Group
+    const zoomGroup = actionsContainer.createDiv({ cls: 'toolbar-zoom-group' });
+
+    const zoomOutBtn = zoomGroup.createEl('button', { cls: 'toolbar-zoom-btn zoom-out' });
+    setIcon(zoomOutBtn, 'minus');
+    zoomOutBtn.title = 'Zoom out (−) or pinch trackpad';
+    zoomOutBtn.addEventListener('click', () => {
+      const nextZoom = Math.max(0.5, parseFloat((this.currentZoom - 0.15).toFixed(2)));
+      this.currentZoom = nextZoom;
+      this.updateZoomDisplay(nextZoom);
+      this.callbacks.onZoomChange?.(nextZoom);
+    });
+
+    this.zoomLabelEl = zoomGroup.createEl('button', {
+      cls: 'toolbar-zoom-label',
+      text: `${Math.round(this.currentZoom * 100)}%`
+    });
+    this.zoomLabelEl.title = 'Display zoom level. Click to reset';
+    this.zoomLabelEl.addEventListener('click', () => {
+      const isCard = this.data.settings.pageSize === 'card3x5';
+      const defaultZoom = isCard ? 1.5 : 1.0;
+      const nextZoom = Math.abs(this.currentZoom - defaultZoom) < 0.05
+        ? (isCard ? 1.0 : 1.5)
+        : defaultZoom;
+      this.currentZoom = nextZoom;
+      this.updateZoomDisplay(nextZoom);
+      this.callbacks.onZoomChange?.(nextZoom);
+    });
+
+    const zoomInBtn = zoomGroup.createEl('button', { cls: 'toolbar-zoom-btn zoom-in' });
+    setIcon(zoomInBtn, 'plus');
+    zoomInBtn.title = 'Zoom in (+) or pinch trackpad';
+    zoomInBtn.addEventListener('click', () => {
+      const nextZoom = Math.min(3.0, parseFloat((this.currentZoom + 0.15).toFixed(2)));
+      this.currentZoom = nextZoom;
+      this.updateZoomDisplay(nextZoom);
+      this.callbacks.onZoomChange?.(nextZoom);
     });
 
     // Print Preview Button
@@ -255,6 +299,15 @@ export class NotesheetToolbar {
         if (!this.data.settings.notecardLines) {
           this.data.settings.notecardLines = this.data.settings.orientation === 'portrait' ? 18 : 10;
         }
+        const targetZoom = 1.5;
+        this.currentZoom = targetZoom;
+        this.updateZoomDisplay(targetZoom);
+        this.callbacks.onZoomChange?.(targetZoom);
+      } else if (newSize !== 'card3x5' && prevSize === 'card3x5') {
+        const targetZoom = 1.0;
+        this.currentZoom = targetZoom;
+        this.updateZoomDisplay(targetZoom);
+        this.callbacks.onZoomChange?.(targetZoom);
       }
       await this.callbacks.onSettingChange();
     });
@@ -423,5 +476,12 @@ export class NotesheetToolbar {
     });
 
     return this.containerEl;
+  }
+
+  public updateZoomDisplay(zoom: number): void {
+    this.currentZoom = zoom;
+    if (this.zoomLabelEl) {
+      this.zoomLabelEl.textContent = `${Math.round(zoom * 100)}%`;
+    }
   }
 }
