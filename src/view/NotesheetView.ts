@@ -174,6 +174,10 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       onTabChange: (tab) => {
         this.activeTab = tab;
         this.updatePageTabVisibility(pagesWrapper);
+        const activeSheet = pagesWrapper.querySelector<HTMLElement>(
+          tab === 'back' ? '#notesheet-page-back' : '#notesheet-page-front'
+        );
+        if (activeSheet) this.updatePageFit(activeSheet);
       },
       onSettingChange: async () => {
         container.removeClass('density-compact', 'density-normal');
@@ -541,24 +545,31 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       paperHeight = isLandscape ? 816 : 1056;
     }
 
-    let marginPx = 28.8;
+    let marginPx = 24; // compact default
     if (pageSize === 'card3x5') {
-      marginPx = this.data.settings.margins === 'tight' ? 10 : this.data.settings.margins === 'normal' ? 24 : 15;
+      marginPx = this.data.settings.margins === 'tight' ? 9.6 : this.data.settings.margins === 'normal' ? 24 : 14.4;
     } else {
-      marginPx = this.data.settings.margins === 'tight' ? 19.2 : this.data.settings.margins === 'normal' ? 48 : 28.8;
+      marginPx = this.data.settings.margins === 'tight' ? 19.2 : this.data.settings.margins === 'normal' ? 48 : 24;
     }
 
-    const headerH = headerEl ? headerEl.offsetHeight || 26 : 0;
-    const footerH = footerEl ? footerEl.offsetHeight || 20 : 0;
-    const availableHeight = paperHeight - (marginPx * 2) - headerH - footerH - 6;
+    // Accurate header & footer measurements including their margins
+    const headerH = headerEl ? (headerEl.offsetHeight + 8) : 0;
+    const footerH = footerEl ? (footerEl.offsetHeight + 8) : 0;
+
+    // Generous safety margin (24px) for print rendering tolerances, KaTeX, and font glyph differences
+    const safetyMargin = pageSize === 'card3x5' ? 10 : 24;
+    const availableHeight = paperHeight - (marginPx * 2) - headerH - footerH - safetyMargin;
 
     const cols = Array.from(grid.querySelectorAll<HTMLElement>('.notesheet-column'));
     if (cols.length === 0) return;
 
-    const currentZoom = parseFloat(grid.style.zoom || '1.0');
+    // Reset zoom temporarily to measure true unscaled natural layout height
+    const prevZoom = grid.style.zoom;
+    grid.style.zoom = '1';
+
     let maxColH = 0;
     for (const col of cols) {
-      const h = col.scrollHeight / currentZoom;
+      const h = col.getBoundingClientRect().height || col.scrollHeight;
       if (h > maxColH) maxColH = h;
     }
 
@@ -567,12 +578,16 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const minScale = pageSize === 'card3x5' ? 0.5 : 0.65;
     const unitLabel = pageSize === 'card3x5' ? 'notecard' : 'page';
 
+    // If element is not rendered/visible in DOM (maxColH == 0), restore previous zoom and return
+    if (maxColH === 0) {
+      if (prevZoom) grid.style.zoom = prevZoom;
+      return;
+    }
+
     if (autoFit && maxColH > availableHeight) {
       const targetScale = Math.max(minScale, Math.min(1.0, availableHeight / maxColH));
       const scaleStr = targetScale.toFixed(3);
-      if (grid.style.zoom !== scaleStr) {
-        grid.style.zoom = scaleStr;
-      }
+      grid.style.zoom = scaleStr;
       pageSheet.classList.remove('is-overflowing');
       if (statsEl) {
         statsEl.setText(`${itemCount} cards • ${(targetScale * 100).toFixed(0)}% fit`);
@@ -580,18 +595,14 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         statsEl.addClass('fit-active');
       }
     } else if (autoFit) {
-      if (grid.style.zoom !== '1') {
-        grid.style.zoom = '1';
-      }
+      grid.style.zoom = '1';
       pageSheet.classList.remove('is-overflowing');
       if (statsEl) {
         statsEl.setText(`${itemCount} card${itemCount !== 1 ? 's' : ''}`);
         statsEl.removeClass('overflow-warn', 'fit-active');
       }
     } else {
-      if (grid.style.zoom !== '1') {
-        grid.style.zoom = '1';
-      }
+      grid.style.zoom = '1';
       if (maxColH > availableHeight + 5) {
         pageSheet.classList.add('is-overflowing');
         if (statsEl) {
@@ -682,11 +693,21 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const orientation = this.data.settings.orientation || (pageSize === 'card3x5' ? 'landscape' : 'portrait');
     const isLandscape = orientation === 'landscape';
 
+    let paperWidth = 816;
+    if (pageSize === 'a4') {
+      paperWidth = isLandscape ? 1123 : 794;
+    } else if (pageSize === 'card3x5') {
+      paperWidth = isLandscape ? 480 : 288;
+    } else {
+      paperWidth = isLandscape ? 1056 : 816;
+    }
+
     const printContainer = document.body.createDiv({
       cls: `print notesheet-print-container density-${this.data.settings.density || 'compact'} paper-${pageSize} orientation-${orientation}`
     });
     printContainer.style.setProperty('--notesheet-font-size', `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
+    printContainer.style.width = `${paperWidth}px`;
 
     // Inject dynamic @page style for margins and page size
     let pageRuleSize = '';
@@ -708,7 +729,7 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const pages = this.createPrintPageElements();
     pages.forEach((pageEl) => {
       printContainer.appendChild(pageEl);
-      // Run fit calculation directly on the print clone to ensure exact 1-page fit
+      // Run fit calculation directly on the print clone
       this.updatePageFit(pageEl);
     });
 
@@ -737,6 +758,6 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
       window.addEventListener('afterprint', doCleanup, { once: true });
       window.print();
       setTimeout(doCleanup, 5000);
-    }, 150);
+    }, 250);
   }
 }
