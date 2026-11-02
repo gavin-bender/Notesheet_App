@@ -1,5 +1,7 @@
 export type PageSize = 'letter' | 'a4' | 'card3x5';
 export type PageOrientation = 'portrait' | 'landscape';
+export type NotecardFontStyle = 'handwritten' | 'standard';
+export type NotecardRuledSide = 'front' | 'both' | 'none';
 
 export interface NotesheetCategory {
   id: string;
@@ -41,6 +43,9 @@ export interface NotesheetSettings {
   showSourceLinks: boolean;// show link back to source note
   showPageNumbers: boolean;// show Page 1: Front / Page 2: Back in print footer
   showCategoryTitles: boolean; // show or hide category title banners/badges
+  notecardFontStyle?: NotecardFontStyle; // handwritten (Caveat/Noteworthy) vs standard sans
+  notecardRuledSide?: NotecardRuledSide; // front (standard 1-sided ruled), both, or none
+  notecardLines?: number; // custom number of lines (default: 10 in landscape, 18 in portrait)
 }
 
 export interface NotesheetData {
@@ -64,6 +69,9 @@ export interface PluginSettings {
   defaultFolder: string;
   activeNotesheetPath: string;
   confirmCardDelete: boolean;
+  defaultNotecardFontStyle: NotecardFontStyle;
+  defaultNotecardRuledSide: NotecardRuledSide;
+  defaultNotecardLines: number;
 }
 
 export const DEFAULT_CATEGORIES: NotesheetCategory[] = [
@@ -95,7 +103,7 @@ export const DEFAULT_NOTECARD_SETTINGS: NotesheetSettings = {
   pageSize: 'card3x5',
   orientation: 'landscape',
   columns: 1,
-  fontSize: 7.0,
+  fontSize: 7.5,
   lineHeight: 1.2,
   margins: 'compact',
   density: 'compact',
@@ -105,7 +113,10 @@ export const DEFAULT_NOTECARD_SETTINGS: NotesheetSettings = {
   showCardTitles: true,
   showSourceLinks: true,
   showPageNumbers: true,
-  showCategoryTitles: true,
+  showCategoryTitles: false,
+  notecardFontStyle: 'handwritten',
+  notecardRuledSide: 'front',
+  notecardLines: 10,
 };
 
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
@@ -120,6 +131,9 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   defaultFolder: '',
   activeNotesheetPath: '',
   confirmCardDelete: false,
+  defaultNotecardFontStyle: 'handwritten',
+  defaultNotecardRuledSide: 'front',
+  defaultNotecardLines: 10,
 };
 
 export function createDefaultNotesheetData(
@@ -137,12 +151,12 @@ export function createDefaultNotesheetData(
     pages: [
       {
         id: 'front',
-        name: isCard ? 'Front (Card 1)' : 'Front (Page 1)',
+        name: isCard ? 'Front (Lined Side)' : 'Front (Page 1)',
         items: []
       },
       {
         id: 'back',
-        name: isCard ? 'Back (Card 2)' : 'Back (Page 2)',
+        name: isCard ? 'Back (Blank Side)' : 'Back (Page 2)',
         items: []
       }
     ]

@@ -244,7 +244,16 @@ export class NotesheetToolbar {
           this.data.settings.columns = 1;
         }
         if (this.data.settings.fontSize > 8) {
-          this.data.settings.fontSize = 7;
+          this.data.settings.fontSize = 7.5;
+        }
+        if (!this.data.settings.notecardFontStyle) {
+          this.data.settings.notecardFontStyle = 'handwritten';
+        }
+        if (!this.data.settings.notecardRuledSide) {
+          this.data.settings.notecardRuledSide = 'front';
+        }
+        if (!this.data.settings.notecardLines) {
+          this.data.settings.notecardLines = this.data.settings.orientation === 'portrait' ? 18 : 10;
         }
       }
       await this.callbacks.onSettingChange();
@@ -263,9 +272,95 @@ export class NotesheetToolbar {
       if (currentOrient === o.id) opt.selected = true;
     });
     orientSelect.addEventListener('change', async () => {
-      this.data.settings.orientation = orientSelect.value as any;
+      const newOrient = orientSelect.value as any;
+      this.data.settings.orientation = newOrient;
+      if (isCard) {
+        if (newOrient === 'portrait' && (!this.data.settings.notecardLines || this.data.settings.notecardLines === 10)) {
+          this.data.settings.notecardLines = 18;
+        } else if (newOrient === 'landscape' && (!this.data.settings.notecardLines || this.data.settings.notecardLines === 18)) {
+          this.data.settings.notecardLines = 10;
+        }
+      }
       await this.callbacks.onSettingChange();
     });
+
+    // Notecard-specific options (Handwritten Font, Ruling, and Line Count)
+    if (isCard) {
+      // Line Count Selector (Option to customize the number of lines; text fits to the lines)
+      const linesGroup = row2.createDiv({ cls: 'toolbar-group' });
+      linesGroup.createSpan({ text: 'Lines:', cls: 'group-label' });
+      const linesSelect = linesGroup.createEl('select', { cls: 'notesheet-select' });
+      const currentLines = this.data.settings.notecardLines || (currentOrient === 'portrait' ? 18 : 10);
+      
+      const lineOptions = currentOrient === 'portrait' ? [
+        { count: 12, label: '12 lines (Wide - 40px)' },
+        { count: 15, label: '15 lines (Medium - 32px)' },
+        { count: 16, label: '16 lines (Standard - 30px)' },
+        { count: 20, label: '20 lines (Standard 1/4" - 24px)' },
+        { count: 24, label: '24 lines (College Ruled - 20px)' },
+        { count: 30, label: '30 lines (Compact - 16px)' }
+      ] : [
+        { count: 8, label: '8 lines (Wide Ruled - 36px)' },
+        { count: 10, label: '10 lines (Medium - 28.8px)' },
+        { count: 12, label: '12 lines (Standard 1/4" - 24px)' },
+        { count: 14, label: '14 lines (College Ruled - 20.5px)' },
+        { count: 16, label: '16 lines (Narrow Ruled - 18px)' },
+        { count: 18, label: '18 lines (Compact - 16px)' },
+        { count: 24, label: '24 lines (Micro - 12px)' }
+      ];
+
+      // Ensure custom count appears in options if present
+      if (!lineOptions.some(lo => lo.count === currentLines)) {
+        lineOptions.unshift({ count: currentLines, label: `${currentLines} lines (Custom)` });
+      }
+
+      lineOptions.forEach(opt => {
+        const el = linesSelect.createEl('option', { text: opt.label, value: opt.count.toString() });
+        if (currentLines === opt.count) el.selected = true;
+      });
+      linesSelect.title = 'Customize the number of lines on the notecard; text automatically fits to the lines';
+      linesSelect.addEventListener('change', async () => {
+        this.data.settings.notecardLines = parseInt(linesSelect.value, 10);
+        await this.callbacks.onSettingChange();
+      });
+
+      // Font Style Selector (Handwritten vs Standard)
+      const fontStyleGroup = row2.createDiv({ cls: 'toolbar-group' });
+      fontStyleGroup.createSpan({ text: 'Style:', cls: 'group-label' });
+      const fontStyleSelect = fontStyleGroup.createEl('select', { cls: 'notesheet-select' });
+      const currentFontStyle = this.data.settings.notecardFontStyle || 'handwritten';
+      [
+        { id: 'handwritten', name: 'Handwritten' },
+        { id: 'standard', name: 'Standard' }
+      ].forEach(st => {
+        const opt = fontStyleSelect.createEl('option', { text: st.name, value: st.id });
+        if (currentFontStyle === st.id) opt.selected = true;
+      });
+      fontStyleSelect.title = 'Choose handwritten or standard font for notecard';
+      fontStyleSelect.addEventListener('change', async () => {
+        this.data.settings.notecardFontStyle = fontStyleSelect.value as any;
+        await this.callbacks.onSettingChange();
+      });
+
+      // Card Ruling Lines Selector
+      const ruleGroup = row2.createDiv({ cls: 'toolbar-group' });
+      ruleGroup.createSpan({ text: 'Ruling:', cls: 'group-label' });
+      const ruleSelect = ruleGroup.createEl('select', { cls: 'notesheet-select' });
+      const currentRuled = this.data.settings.notecardRuledSide || 'front';
+      [
+        { id: 'front', name: 'Front Lined / Back Blank' },
+        { id: 'both', name: 'Both Sides Lined' },
+        { id: 'none', name: 'Plain (No Lines)' }
+      ].forEach(r => {
+        const opt = ruleSelect.createEl('option', { text: r.name, value: r.id });
+        if (currentRuled === r.id) opt.selected = true;
+      });
+      ruleSelect.title = 'Ruling lines: real index cards have lines on front and are blank on back';
+      ruleSelect.addEventListener('change', async () => {
+        this.data.settings.notecardRuledSide = ruleSelect.value as any;
+        await this.callbacks.onSettingChange();
+      });
+    }
 
     // Toggle Card Borders
     const borderGroup = row2.createDiv({ cls: 'toolbar-group' });

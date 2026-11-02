@@ -2,6 +2,8 @@
    OBSIDIAN NOTESHEET PLUGIN STYLES
    ======================================================== */
 
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap');
+
 :root {
   --notesheet-font-size: 8.5pt;
   --notesheet-columns: 2;
@@ -10,12 +12,18 @@
   --notesheet-border-color: #d0d7de;
   --notesheet-card-border: #d0d7de;
   --notesheet-header-divider: #e1e4e8;
+  --notesheet-font-handwriting: 'Caveat', 'Noteworthy', 'Chalkboard SE', 'Segoe Print', 'Ink Free', 'Comic Sans MS', cursive, sans-serif;
+  --notesheet-card-red-rule: #e85d75;
+  --notesheet-rule-color: #a4cbf5;
+  --notecard-line-pitch: 24px;
 }
 
 .theme-dark {
   --notesheet-border-color: var(--background-modifier-border-hover, #444c56);
   --notesheet-card-border: var(--background-modifier-border-hover, #444c56);
   --notesheet-header-divider: var(--background-modifier-border, #373e47);
+  --notesheet-card-red-rule: #e85d75;
+  --notesheet-rule-color: #3b82f640;
 }
 
 .notesheet-view-root {
@@ -255,23 +263,31 @@
   min-height: 794px;
 }
 
-/* 3x5 Notecard Page Dimensions (Ratio: 5 x 3 in landscape, 3 x 5 in portrait) */
+/* 3x5 Notecard Page Dimensions & Cardstock Canvas (Ratio: 5 x 3 in landscape, 3 x 5 in portrait) */
 .notesheet-page-sheet.paper-card3x5 {
   width: 480px;
   max-width: 480px;
   min-height: 288px;
+  height: 288px;
+  padding: 0 !important;
+  overflow: hidden;
+  background-color: #ffffff !important;
+  border: 1px solid #d4d4d8;
+  color: #1a202c !important;
 }
 
 .notesheet-page-sheet.paper-card3x5.orientation-portrait {
   width: 288px;
   max-width: 288px;
   min-height: 480px;
+  height: 480px;
 }
 
 .notesheet-page-sheet.paper-card3x5.orientation-landscape {
   width: 480px;
   max-width: 480px;
   min-height: 288px;
+  height: 288px;
 }
 
 /* Margin Variations */
@@ -287,16 +303,10 @@
   padding: 38px;
 }
 
-.notesheet-page-sheet.paper-card3x5.margin-tight {
-  padding: 10px;
-}
-
-.notesheet-page-sheet.paper-card3x5.margin-compact {
-  padding: 15px;
-}
-
+.notesheet-page-sheet.paper-card3x5.margin-tight,
+.notesheet-page-sheet.paper-card3x5.margin-compact,
 .notesheet-page-sheet.paper-card3x5.margin-normal {
-  padding: 24px;
+  padding: 0 !important;
 }
 
 /* Visual guide when cards overflow the physical 1-page paper height */
@@ -389,35 +399,287 @@
   top: 480px;
 }
 
-/* Notecard-specific UI refinements */
-.notesheet-page-sheet.paper-card3x5 .notesheet-page-header {
-  padding-bottom: 2px;
-  margin-bottom: 4px;
+/* ========================================================
+   AUTHENTIC 3x5 NOTECARD / INDEX CARD STYLING & BASELINE ALIGNMENT
+   ======================================================== */
+
+.notesheet-page-sheet.paper-card3x5 {
+  --notecard-line-pitch: 24px;
 }
 
-.notesheet-page-sheet.paper-card3x5 .page-title {
-  font-size: 10px;
+.notesheet-page-sheet.paper-card3x5.density-compact {
+  --notecard-line-pitch: 20px;
 }
 
-.notesheet-page-sheet.paper-card3x5 .page-stats {
-  font-size: 7.5pt;
-  padding: 1px 4px;
+.notesheet-page-sheet.paper-card3x5.density-normal {
+  --notecard-line-pitch: 24px;
+}
+
+/* Authentic Student Handwriting Typography */
+.notesheet-page-sheet.paper-card3x5.font-style-handwritten,
+.notesheet-page-sheet.paper-card3x5:not(.font-style-standard) {
+  font-family: var(--notesheet-font-handwriting);
+}
+
+.notesheet-page-sheet.paper-card3x5.font-style-standard {
+  font-family: var(--font-text);
+}
+
+/* Page Wrapper for Notecards (holds outside header + 3x5 index card) */
+.notesheet-page-wrapper.is-notecard-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 480px;
+  box-sizing: border-box;
+}
+
+.notesheet-page-wrapper.is-notecard-wrapper.orientation-portrait {
+  width: 288px;
+}
+
+.notesheet-page-wrapper.is-notecard-wrapper.orientation-landscape {
+  width: 480px;
+}
+
+/* Outside Header for 3x5 Notecards (Clean title & stats above the physical card) */
+.notecard-outside-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  padding: 0 4px;
+  margin-bottom: 0;
+  border-bottom: none !important;
+  box-sizing: border-box;
+  background: transparent;
+  user-select: none;
+}
+
+.notecard-outside-header .page-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-accent, #2563eb);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.notecard-outside-header .page-stats {
+  font-size: 11px;
+  color: var(--text-muted, #64748b);
+  font-family: var(--font-text);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.notecard-outside-header .page-stats.overflow-warn {
+  color: var(--text-error, #e53935) !important;
+  font-weight: 600;
 }
 
 .notesheet-page-sheet.paper-card3x5 .notesheet-page-footer {
   font-size: 6.5pt;
-  padding-top: 2px;
+  padding: 2px 16px 4px 16px;
   margin-top: auto;
+  color: #94a3b8;
+  font-family: var(--font-text);
 }
 
+/* Fixed Notecard Ruling Layer (Does NOT scale with text or content)
+   Red margin rule sits at bottom of Row 1 (the top margin line);
+   Blue lines repeat for all subsequent rows! */
+.notesheet-notecard-ruling {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(
+      to bottom,
+      transparent calc(var(--notecard-line-pitch, 24px) - 2px),
+      var(--notesheet-card-red-rule, #e85d75) calc(var(--notecard-line-pitch, 24px) - 2px),
+      var(--notesheet-card-red-rule, #e85d75) var(--notecard-line-pitch, 24px),
+      transparent var(--notecard-line-pitch, 24px)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--notecard-line-pitch, 24px) - 1px),
+      var(--notesheet-rule-color, #a0c4e8) calc(var(--notecard-line-pitch, 24px) - 1px),
+      var(--notesheet-rule-color, #a0c4e8) var(--notecard-line-pitch, 24px)
+    );
+  background-size: 100% 100%, 100% var(--notecard-line-pitch, 24px);
+  background-position: 0 0, 0 var(--notecard-line-pitch, 24px);
+  background-repeat: no-repeat, repeat-y;
+  z-index: 1;
+}
+
+/* Columns Grid (Content area starts right at y=0 so Row 1 sits in top margin above red rule) */
 .notesheet-page-sheet.paper-card3x5 .notesheet-columns-grid {
-  gap: 4px;
+  flex: 1;
+  display: flex;
+  box-sizing: border-box;
+  padding: 0 16px;
+  gap: 0;
+  position: relative;
+  z-index: 2;
+  background: transparent !important;
+  overflow: hidden;
+  height: 100%;
 }
 
+/* Margin Variations on Ruled Notecard */
+.notesheet-page-sheet.paper-card3x5.margin-tight .notesheet-columns-grid {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.notesheet-page-sheet.paper-card3x5.margin-compact .notesheet-columns-grid {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.notesheet-page-sheet.paper-card3x5.margin-normal .notesheet-columns-grid {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* Back / Blank side is unruled clean white cardstock */
+.notesheet-page-sheet.paper-card3x5.is-blank .notesheet-columns-grid,
+.notesheet-page-sheet.paper-card3x5.page-side-back:not(.is-ruled) .notesheet-columns-grid {
+  background-image: none !important;
+  background-color: transparent !important;
+}
+
+/* Notecard Column & Card Stack */
 .notesheet-page-sheet.paper-card3x5 .notesheet-column {
-  gap: 4px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+  min-width: 0;
 }
 
+/* Cards on Notecards blend seamlessly into ruled paper */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 4px !important;
+  box-sizing: border-box;
+  transition: background-color 0.1s ease;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card:hover {
+  background-color: rgba(37, 99, 235, 0.03) !important;
+}
+
+/* Category left margin stripe */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card.has-category {
+  border-left: 3px solid var(--card-cat-color, #2563eb) !important;
+  padding-left: 6px !important;
+}
+
+/* Subtle dashed separator between cards sitting directly on ruled line */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card:not(:last-child) {
+  border-bottom: 1px dashed var(--notesheet-rule-color, #a0c4e8) !important;
+  margin-bottom: -1px !important;
+}
+
+/* Card Header aligns to exact 1 line pitch */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-header {
+  height: var(--notecard-line-pitch, 24px) !important;
+  min-height: var(--notecard-line-pitch, 24px) !important;
+  max-height: var(--notecard-line-pitch, 24px) !important;
+  line-height: var(--notecard-line-pitch, 24px) !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-title {
+  font-size: calc(var(--notecard-font-size, 12.5px) * 1.1) !important;
+  font-weight: 700;
+  color: #1e3a8a;
+  line-height: var(--notecard-line-pitch, 24px) !important;
+}
+
+/* Text Fits to the Lines: Line-height & Font-size */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body {
+  font-size: var(--notecard-font-size, 12.5px) !important;
+  line-height: var(--notecard-line-pitch, 24px) !important;
+  color: #1a202c;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body p,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body ul,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body ol,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body li,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body div,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body h1,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body h2,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body h3,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body h4 {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: var(--notecard-line-pitch, 24px) !important;
+  min-height: var(--notecard-line-pitch, 24px);
+  box-sizing: border-box;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body ul,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body ol {
+  padding-left: 16px !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body code {
+  font-family: inherit;
+  font-weight: 600;
+  color: #c026d3;
+  background: rgba(192, 38, 211, 0.06);
+  padding: 0 2px;
+}
+
+/* Compact math styling for notecards: fractions and equations never break ruled line baselines */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-inline,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex {
+  font-size: 0.9em !important;
+  line-height: 1 !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac {
+  font-size: 0.82em !important;
+}
+
+/* Suppress KaTeX strut that forces line box expansion beyond line pitch */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .strut {
+  display: none !important;
+}
+
+/* Display math blocks cleanly snap to exact 2 lines on the notecard ruling */
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-block {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: calc(var(--notecard-line-pitch) * 2) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: calc(var(--notecard-line-pitch) * 2) !important;
+  box-sizing: border-box !important;
+}
+
+/* Empty State on Notecard */
 .notesheet-page-sheet.paper-card3x5 .notesheet-empty-state {
   padding: 14px 10px;
 }
@@ -429,14 +691,18 @@
 }
 
 .notesheet-page-sheet.paper-card3x5 .notesheet-empty-state h3 {
-  font-size: 12px;
+  font-size: 13px;
   margin: 0 0 3px 0;
+  font-weight: 700;
+  color: #1e3a8a;
 }
 
 .notesheet-page-sheet.paper-card3x5 .notesheet-empty-state p {
-  font-size: 10px;
+  font-size: 11px;
   margin: 0 0 8px 0;
   max-width: 240px;
+  color: #64748b;
+  font-family: var(--font-text);
 }
 
 .notesheet-page-sheet.paper-card3x5 .notesheet-empty-state button {
@@ -1527,7 +1793,8 @@ body > .print.notesheet-print-container,
 /* Screen Tab Visibility:
    Must NOT be display: none so both Front and Back pages remain fully rendered
    and measurable in the DOM for real-time auto-fit scaling and WYSIWYG sync */
-.notesheet-page-sheet.tab-hidden {
+.notesheet-page-sheet.tab-hidden,
+.notesheet-page-wrapper.tab-hidden {
   position: absolute !important;
   top: 0 !important;
   left: -99999px !important;
@@ -1758,6 +2025,8 @@ body > .print.notesheet-print-container,
   height: 288px !important;
   max-width: 480px !important;
   max-height: 288px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
 }
 
 .notesheet-preview-container .notesheet-page-sheet.paper-card3x5.orientation-portrait {
@@ -1765,18 +2034,13 @@ body > .print.notesheet-print-container,
   height: 480px !important;
   max-width: 288px !important;
   max-height: 480px !important;
+  padding: 0 !important;
 }
 
-.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-tight {
-  padding: 10px !important;
-}
-
-.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-compact {
-  padding: 15px !important;
-}
-
+.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-tight,
+.notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-compact,
 .notesheet-preview-container .notesheet-page-sheet.paper-card3x5.margin-normal {
-  padding: 24px !important;
+  padding: 0 !important;
 }
 
 .notesheet-preview-container .notesheet-page-sheet.margin-tight {
@@ -2046,6 +2310,8 @@ body > .print.notesheet-print-container,
     border: none !important;
     box-shadow: none !important;
     overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .notesheet-print-container .notesheet-page-sheet,
@@ -2066,37 +2332,189 @@ body > .print.notesheet-print-container,
     box-sizing: border-box !important;
   }
 
-  /* 3x5 Notecard Specific Print Sizing */
-  .notesheet-print-container.paper-card3x5 .notesheet-page-header,
+  /* 3x5 Notecard Specific Print Sizing & Ruled Styling */
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 {
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    border: none !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5.font-style-handwritten,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5:not(.font-style-standard) {
+    font-family: var(--notesheet-font-handwriting) !important;
+  }
+
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-page-header {
-    padding-bottom: 2px !important;
-    margin-bottom: 4px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 0 16px !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+
+  /* Ruled front side gets red margin line in print */
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5.is-ruled .notesheet-page-header,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5.page-side-front:not(.is-blank) .notesheet-page-header {
+    border-bottom: 2px solid #e85d75 !important;
+  }
+
+  /* Blank side gets subtle divider in print */
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5.is-blank .notesheet-page-header,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5.page-side-back:not(.is-ruled) .notesheet-page-header {
+    border-bottom: 1px solid #e2e8f0 !important;
   }
 
   .notesheet-print-container.paper-card3x5 .page-title,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .page-title {
-    font-size: 10pt !important;
+    font-size: 14pt !important;
+    font-weight: 700 !important;
+    color: #1e3a8a !important;
   }
 
   .notesheet-print-container.paper-card3x5 .page-stats,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .page-stats {
-    font-size: 7.5pt !important;
+    font-size: 8pt !important;
+    color: #64748b !important;
   }
 
   .notesheet-print-container.paper-card3x5 .notesheet-page-footer,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-page-footer {
     font-size: 6.5pt !important;
-    padding-top: 2px !important;
+    padding: 2px 16px 4px 16px !important;
+    color: #94a3b8 !important;
+  }
+
+  /* Fixed Ruling Layer in Print */
+  .notesheet-print-container .notesheet-notecard-ruling {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    pointer-events: none !important;
+    background-image: 
+      linear-gradient(
+        to bottom,
+        transparent calc(var(--notecard-line-pitch, 24px) - 2px),
+        #e85d75 calc(var(--notecard-line-pitch, 24px) - 2px),
+        #e85d75 var(--notecard-line-pitch, 24px),
+        transparent var(--notecard-line-pitch, 24px)
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(var(--notecard-line-pitch, 24px) - 1px),
+        #a0c4e8 calc(var(--notecard-line-pitch, 24px) - 1px),
+        #a0c4e8 var(--notecard-line-pitch, 24px)
+      ) !important;
+    background-size: 100% 100%, 100% var(--notecard-line-pitch, 24px) !important;
+    background-position: 0 0, 0 var(--notecard-line-pitch, 24px) !important;
+    background-repeat: no-repeat, repeat-y !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    z-index: 1 !important;
   }
 
   .notesheet-print-container.paper-card3x5 .notesheet-columns-grid,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-columns-grid {
-    gap: 4px !important;
+    gap: 0 !important;
+    padding: 0 16px !important;
+    background: transparent !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+
+  /* Blank side unruled in print */
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5.is-blank .notesheet-columns-grid,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5.page-side-back:not(.is-ruled) .notesheet-columns-grid {
+    background-image: none !important;
   }
 
   .notesheet-print-container.paper-card3x5 .notesheet-column,
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-column {
-    gap: 4px !important;
+    gap: 0 !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 4px !important;
+    margin: 0 !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card:not(:last-child) {
+    border-bottom: 1px dashed #a0c4e8 !important;
+    margin-bottom: -1px !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-header {
+    height: var(--notecard-line-pitch, 24px) !important;
+    min-height: var(--notecard-line-pitch, 24px) !important;
+    max-height: var(--notecard-line-pitch, 24px) !important;
+    line-height: var(--notecard-line-pitch, 24px) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-title {
+    font-size: calc(var(--notecard-font-size, 12.5px) * 1.1) !important;
+    font-weight: 700 !important;
+    color: #1e3a8a !important;
+    line-height: var(--notecard-line-pitch, 24px) !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body {
+    font-size: var(--notecard-font-size, 12.5px) !important;
+    line-height: var(--notecard-line-pitch, 24px) !important;
+    color: #1a202c !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body p,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body ul,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body ol,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body li,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body div,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body h1,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body h2,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body h3,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body h4 {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: var(--notecard-line-pitch) !important;
+    min-height: var(--notecard-line-pitch) !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-inline,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex {
+    font-size: 0.9em !important;
+    line-height: 1 !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac {
+    font-size: 0.82em !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .strut {
+    display: none !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .math-block {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: calc(var(--notecard-line-pitch) * 2) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: calc(var(--notecard-line-pitch) * 2) !important;
+    box-sizing: border-box !important;
   }
 
   /* Page breaks between sheets: break after each page except the last */

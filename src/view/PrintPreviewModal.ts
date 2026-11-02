@@ -57,9 +57,13 @@ export class PrintPreviewModal extends Modal {
     }
 
     const unitDesc = isCard ? '2 Sides (Front & Back)' : '2 Pages (Front & Back)';
+    const ruledSide = this.data.settings.notecardRuledSide || 'front';
+    const ruledDesc = ruledSide === 'front' ? 'Front Lined / Back Blank' : ruledSide === 'both' ? 'Both Lined' : 'Plain';
+    const fontDesc = (this.data.settings.notecardFontStyle || 'handwritten') === 'handwritten' ? 'Handwritten' : 'Standard';
+    const notecardExtra = isCard ? ` • ${ruledDesc} • ${fontDesc}` : '';
     headerLeft.createSpan({
       cls: 'preview-modal-info',
-      text: `${this.data.title} • ${unitDesc} • ${paperName} • ${marginsName} • ${densityName} Density`
+      text: `${this.data.title} • ${unitDesc} • ${paperName}${notecardExtra} • ${marginsName} • ${densityName} Density`
     });
 
     // Right side: Zoom, Print & Close Controls

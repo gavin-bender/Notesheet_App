@@ -61,6 +61,15 @@ ${jsonStr}
         if (parsed.settings.showCardBackground === undefined) {
           parsed.settings.showCardBackground = false;
         }
+        if (!parsed.settings.notecardFontStyle) {
+          parsed.settings.notecardFontStyle = 'handwritten';
+        }
+        if (!parsed.settings.notecardRuledSide) {
+          parsed.settings.notecardRuledSide = 'front';
+        }
+        if (!parsed.settings.notecardLines) {
+          parsed.settings.notecardLines = parsed.settings.orientation === 'portrait' ? 18 : 10;
+        }
       }
     };
 
@@ -157,7 +166,16 @@ ${jsonStr}
    * Helper to create a 3x5 notecard in the vault.
    */
   public async createNotecard(folderPath = '', title = 'Exam Notecard (3x5)'): Promise<TFile> {
-    return this.createNotesheet(folderPath, title, { pageSize: 'card3x5', orientation: 'landscape', columns: 1, fontSize: 7.0 });
+    return this.createNotesheet(folderPath, title, {
+      pageSize: 'card3x5',
+      orientation: 'landscape',
+      columns: 1,
+      fontSize: 7.5,
+      notecardLines: 10,
+      notecardFontStyle: 'handwritten',
+      notecardRuledSide: 'front',
+      showCategoryTitles: false
+    });
   }
 
   /**

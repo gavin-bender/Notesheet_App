@@ -139,6 +139,51 @@ export class NotesheetSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName('Default Notecard Font Style')
+      .setDesc('Font style for 3" x 5" index cards (Handwritten uses authentic student script font)')
+      .addDropdown(dd => {
+        dd.addOption('handwritten', 'Handwritten (Caveat / Noteworthy)');
+        dd.addOption('standard', 'Standard (System Sans-Serif)');
+        dd.setValue(this.plugin.settings.defaultNotecardFontStyle || 'handwritten');
+        dd.onChange(async (val) => {
+          this.plugin.settings.defaultNotecardFontStyle = val as any;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Default Notecard Ruling')
+      .setDesc('Ruling lines for 3" x 5" index cards (Real index cards have lines on front and blank back)')
+      .addDropdown(dd => {
+        dd.addOption('front', 'Front Lined / Back Blank (Standard Index Card)');
+        dd.addOption('both', 'Both Sides Lined');
+        dd.addOption('none', 'Plain / Unruled (No Lines)');
+        dd.setValue(this.plugin.settings.defaultNotecardRuledSide || 'front');
+        dd.onChange(async (val) => {
+          this.plugin.settings.defaultNotecardRuledSide = val as any;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Default Notecard Lines')
+      .setDesc('Number of ruled lines per 3" x 5" notecard (text automatically fits to the lines)')
+      .addDropdown(dd => {
+        dd.addOption('8', '8 Lines (Wide Ruled - 36px pitch)');
+        dd.addOption('10', '10 Lines (Medium - 28.8px pitch)');
+        dd.addOption('12', '12 Lines (Standard 1/4" Ruling - 24px pitch)');
+        dd.addOption('14', '14 Lines (College Ruled - 20.5px pitch)');
+        dd.addOption('16', '16 Lines (Narrow Ruled - 18px pitch)');
+        dd.addOption('18', '18 Lines (Compact - 16px pitch)');
+        dd.addOption('24', '24 Lines (Micro - 12px pitch)');
+        dd.setValue((this.plugin.settings.defaultNotecardLines || 10).toString());
+        dd.onChange(async (val) => {
+          this.plugin.settings.defaultNotecardLines = parseInt(val, 10);
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
       .setName('Notesheet Folder')
       .setDesc('Folder in vault to store newly created notesheet files (leave empty for vault root)')
       .addText(text => {
