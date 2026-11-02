@@ -726,8 +726,19 @@
   line-height: 1 !important;
 }
 
-.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac {
-  font-size: 0.82em !important;
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-frac {
+  display: inline-block !important;
+  transform: scale(0.75) !important;
+  transform-origin: center center !important;
+  vertical-align: middle !important;
+  margin: 0 -1.5px !important;
+}
+
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .sqrt,
+.notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-sqrt {
+  display: inline-block !important;
+  vertical-align: middle !important;
 }
 
 /* Suppress KaTeX strut that forces line box expansion beyond line pitch */
@@ -2566,8 +2577,19 @@ body > .print.notesheet-print-container,
     line-height: 1 !important;
   }
 
-  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac {
-    font-size: 0.82em !important;
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .mfrac,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-frac {
+    display: inline-block !important;
+    transform: scale(0.75) !important;
+    transform-origin: center center !important;
+    vertical-align: middle !important;
+    margin: 0 -1.5px !important;
+  }
+
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .sqrt,
+  .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body mjx-container[jax="CHTML"] mjx-sqrt {
+    display: inline-block !important;
+    vertical-align: middle !important;
   }
 
   .notesheet-print-container .notesheet-page-sheet.paper-card3x5 .notesheet-card-body .katex .strut {
