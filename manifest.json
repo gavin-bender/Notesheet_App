@@ -5,5 +5,6 @@
   "minAppVersion": "0.15.0",
   "description": "Exam notesheet organizer for Obsidian. Create 2-page (front & back) cheat sheets from note blocks with live two-way sync and exam print layout.",
   "author": "Gavin Bender",
+  "authorUrl": "https://github.com/gavin-bender",
   "isDesktopOnly": false
 }
