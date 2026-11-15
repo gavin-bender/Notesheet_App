@@ -245,15 +245,15 @@
 
 /* Margin Variations */
 .notesheet-page-sheet.margin-tight {
-  padding: 19px;
+  padding: 19.2px;
 }
 
 .notesheet-page-sheet.margin-compact {
-  padding: 24px;
+  padding: 28.8px;
 }
 
 .notesheet-page-sheet.margin-normal {
-  padding: 38px;
+  padding: 48px;
 }
 
 /* Visual guide when cards overflow the physical 1-page paper height */
@@ -1800,6 +1800,22 @@
   padding-top: 2px !important;
   margin-top: auto !important;
   font-size: 7.5pt !important;
+}
+
+/* Keep normal-density preview measurements identical to the print rules. */
+.notesheet-preview-container.density-normal .notesheet-columns-grid,
+.notesheet-preview-container.density-normal .notesheet-column {
+  gap: 8px !important;
+}
+
+.notesheet-preview-container.density-normal .notesheet-card-header {
+  margin-bottom: 4px !important;
+}
+
+.notesheet-preview-container.density-normal .notesheet-card-body pre {
+  margin: 4px 0 !important;
+  padding: 4px 6px !important;
+  line-height: 1.25 !important;
 }
 
 /* ========================================================

@@ -1905,6 +1905,27 @@ var PrintPreviewModal = class extends import_obsidian10.Modal {
   }
 };
 
+// src/view/PageFit.ts
+function fitColumns(grid, columns, availableHeight, autoFit) {
+  const measure = (scale2) => {
+    grid.style.zoom = String(scale2);
+    return Math.max(...columns.map((col) => col.scrollHeight)) * scale2;
+  };
+  let height = measure(1);
+  if (!autoFit || height <= availableHeight) return { scale: 1, height };
+  let low = 650;
+  let high = 1e3;
+  height = measure(low / 1e3);
+  if (height > availableHeight) return { scale: low / 1e3, height };
+  while (high - low > 1) {
+    const mid = Math.floor((low + high) / 2);
+    if (measure(mid / 1e3) <= availableHeight) low = mid;
+    else high = mid;
+  }
+  const scale = low / 1e3;
+  return { scale, height: measure(scale) };
+}
+
 // src/view/NotesheetView.ts
 var NOTESHEET_VIEW_TYPE = "notesheet-view";
 var NotesheetView = class extends import_obsidian11.ItemView {
@@ -2122,6 +2143,7 @@ var NotesheetView = class extends import_obsidian11.ItemView {
         pageBack.classList.remove("tab-hidden");
       }
     }
+    root.querySelectorAll(".notesheet-page-sheet:not(.tab-hidden)").forEach((page) => this.updatePageFit(page));
   }
   renderSinglePage(container, page) {
     const pageSheet = container.createDiv({
@@ -2315,6 +2337,7 @@ var NotesheetView = class extends import_obsidian11.ItemView {
         });
       });
       observer.observe(pageSheet);
+      colContainers.forEach((col) => observer.observe(col));
       this.pageObservers.push(observer);
     }
     setTimeout(runFit, 100);
@@ -2322,65 +2345,41 @@ var NotesheetView = class extends import_obsidian11.ItemView {
   }
   updatePageFit(pageSheet) {
     const grid = pageSheet.querySelector(".notesheet-columns-grid");
-    if (!grid) return;
+    if (!grid || grid.clientWidth === 0) return;
     const headerEl = pageSheet.querySelector(".notesheet-page-header");
     const footerEl = pageSheet.querySelector(".notesheet-page-footer");
     const statsEl = pageSheet.querySelector(".page-stats");
     const isA4 = this.data.settings.pageSize === "a4";
     const paperHeight = isA4 ? 1123 : 1056;
     const marginPx = this.data.settings.margins === "tight" ? 19.2 : this.data.settings.margins === "normal" ? 48 : 28.8;
-    const headerH = headerEl ? headerEl.offsetHeight || 30 : 0;
-    const footerH = footerEl ? footerEl.offsetHeight || 24 : 0;
-    const availableHeight = paperHeight - marginPx * 2 - headerH - footerH - 6;
+    const headerH = headerEl ? headerEl.offsetHeight : 0;
+    const footerH = footerEl ? footerEl.offsetHeight : 0;
+    const headerGap = headerEl ? parseFloat(getComputedStyle(headerEl).marginBottom) || 0 : 0;
+    const availableHeight = paperHeight - marginPx * 2 - headerH - footerH - headerGap - 6;
     const cols = Array.from(grid.querySelectorAll(".notesheet-column"));
     if (cols.length === 0) return;
-    const currentZoom = parseFloat(grid.style.zoom || "1.0");
-    let maxColH = 0;
-    for (const col of cols) {
-      const h = col.scrollHeight / currentZoom;
-      if (h > maxColH) maxColH = h;
-    }
     const itemCount = cols.reduce((acc, c) => acc + c.querySelectorAll(".notesheet-card").length, 0);
     const autoFit = this.data.settings.autoFitPage !== false;
-    if (autoFit && maxColH > availableHeight) {
-      const targetScale = Math.max(0.65, Math.min(1, availableHeight / maxColH));
-      const scaleStr = targetScale.toFixed(3);
-      if (grid.style.zoom !== scaleStr) {
-        grid.style.zoom = scaleStr;
+    const { scale: targetScale, height: maxColH } = fitColumns(grid, cols, availableHeight, autoFit);
+    if (maxColH > availableHeight + 1) {
+      pageSheet.classList.add("is-overflowing");
+      if (statsEl) {
+        statsEl.setText(`${itemCount} cards \u2022 \u26A0\uFE0F Overflows page (+${Math.ceil(maxColH - availableHeight)}px)`);
+        statsEl.addClass("overflow-warn");
+        statsEl.removeClass("fit-active");
       }
+    } else if (autoFit && targetScale < 1) {
       pageSheet.classList.remove("is-overflowing");
       if (statsEl) {
         statsEl.setText(`${itemCount} cards \u2022 ${(targetScale * 100).toFixed(0)}% fit`);
         statsEl.removeClass("overflow-warn");
         statsEl.addClass("fit-active");
       }
-    } else if (autoFit) {
-      if (grid.style.zoom !== "1") {
-        grid.style.zoom = "1";
-      }
+    } else {
       pageSheet.classList.remove("is-overflowing");
       if (statsEl) {
         statsEl.setText(`${itemCount} card${itemCount !== 1 ? "s" : ""}`);
         statsEl.removeClass("overflow-warn", "fit-active");
-      }
-    } else {
-      if (grid.style.zoom !== "1") {
-        grid.style.zoom = "1";
-      }
-      if (maxColH > availableHeight + 5) {
-        pageSheet.classList.add("is-overflowing");
-        if (statsEl) {
-          const overflowPx = Math.round(maxColH - availableHeight);
-          statsEl.setText(`${itemCount} cards \u2022 \u26A0\uFE0F Overflows page (+${overflowPx}px)`);
-          statsEl.addClass("overflow-warn");
-          statsEl.removeClass("fit-active");
-        }
-      } else {
-        pageSheet.classList.remove("is-overflowing");
-        if (statsEl) {
-          statsEl.setText(`${itemCount} card${itemCount !== 1 ? "s" : ""}`);
-          statsEl.removeClass("overflow-warn", "fit-active");
-        }
       }
     }
   }
@@ -2437,16 +2436,20 @@ var NotesheetView = class extends import_obsidian11.ItemView {
     });
     printContainer.style.setProperty("--notesheet-font-size", `${this.data.settings.fontSize}pt`);
     printContainer.style.setProperty("--notesheet-columns", `${this.data.settings.columns}`);
-    const marginInches = this.data.settings.margins === "tight" ? "0.2in" : this.data.settings.margins === "normal" ? "0.5in" : "0.25in";
+    const marginInches = this.data.settings.margins === "tight" ? "0.2in" : this.data.settings.margins === "normal" ? "0.5in" : "0.3in";
     const dynamicStyle = document.createElement("style");
     dynamicStyle.id = "notesheet-print-dynamic-style";
     dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
     document.head.appendChild(dynamicStyle);
     const pages = this.createPrintPageElements();
+    printContainer.addClass("notesheet-preview-container");
+    printContainer.style.cssText += "; display: block !important; position: fixed; left: -100000px; visibility: hidden;";
     pages.forEach((pageEl) => {
       printContainer.appendChild(pageEl);
       this.updatePageFit(pageEl);
     });
+    printContainer.removeClass("notesheet-preview-container");
+    ["display", "position", "left", "visibility"].forEach((prop) => printContainer.style.removeProperty(prop));
     return printContainer;
   }
   cleanPrintContainer() {

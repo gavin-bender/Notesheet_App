@@ -8,6 +8,7 @@ import { NotesheetCard } from './NotesheetCard';
 import { BlockPickerModal } from './BlockPickerModal';
 import { CategoryManagerModal } from './CategoryManagerModal';
 import { PrintPreviewModal } from './PrintPreviewModal';
+import { fitColumns } from './PageFit';
 
 export const NOTESHEET_VIEW_TYPE = 'notesheet-view';
 
@@ -261,6 +262,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         pageBack.classList.remove('tab-hidden');
       }
     }
+    root.querySelectorAll<HTMLElement>('.notesheet-page-sheet:not(.tab-hidden)')
+      .forEach(page => this.updatePageFit(page));
   }
 
   private renderSinglePage(container: HTMLElement, page: { id: string; name: string; items: NotesheetItem[] }): void {
@@ -507,6 +510,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
         });
       });
       observer.observe(pageSheet);
+      // Math, images and synced edits can change content without resizing the paper.
+      colContainers.forEach(col => observer.observe(col));
       this.pageObservers.push(observer);
     }
     setTimeout(runFit, 100);
@@ -515,7 +520,8 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
 
   public updatePageFit(pageSheet: HTMLElement): void {
     const grid = pageSheet.querySelector<HTMLElement>('.notesheet-columns-grid');
-    if (!grid) return;
+    // Hidden tabs have no layout to measure. Fit them when they become visible.
+    if (!grid || grid.clientWidth === 0) return;
     const headerEl = pageSheet.querySelector<HTMLElement>('.notesheet-page-header');
     const footerEl = pageSheet.querySelector<HTMLElement>('.notesheet-page-footer');
     const statsEl = pageSheet.querySelector<HTMLElement>('.page-stats');
@@ -523,62 +529,37 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     const isA4 = this.data.settings.pageSize === 'a4';
     const paperHeight = isA4 ? 1123 : 1056;
     const marginPx = this.data.settings.margins === 'tight' ? 19.2 : this.data.settings.margins === 'normal' ? 48 : 28.8;
-    const headerH = headerEl ? headerEl.offsetHeight || 30 : 0;
-    const footerH = footerEl ? footerEl.offsetHeight || 24 : 0;
-    const availableHeight = paperHeight - (marginPx * 2) - headerH - footerH - 6;
+    const headerH = headerEl ? headerEl.offsetHeight : 0;
+    const footerH = footerEl ? footerEl.offsetHeight : 0;
+    const headerGap = headerEl ? parseFloat(getComputedStyle(headerEl).marginBottom) || 0 : 0;
+    const availableHeight = paperHeight - (marginPx * 2) - headerH - footerH - headerGap - 6;
 
     const cols = Array.from(grid.querySelectorAll<HTMLElement>('.notesheet-column'));
     if (cols.length === 0) return;
 
-    const currentZoom = parseFloat(grid.style.zoom || '1.0');
-    let maxColH = 0;
-    for (const col of cols) {
-      const h = col.scrollHeight / currentZoom;
-      if (h > maxColH) maxColH = h;
-    }
-
     const itemCount = cols.reduce((acc, c) => acc + c.querySelectorAll('.notesheet-card').length, 0);
     const autoFit = this.data.settings.autoFitPage !== false;
+    const { scale: targetScale, height: maxColH } = fitColumns(grid, cols, availableHeight, autoFit);
 
-    if (autoFit && maxColH > availableHeight) {
-      const targetScale = Math.max(0.65, Math.min(1.0, availableHeight / maxColH));
-      const scaleStr = targetScale.toFixed(3);
-      if (grid.style.zoom !== scaleStr) {
-        grid.style.zoom = scaleStr;
+    if (maxColH > availableHeight + 1) {
+      pageSheet.classList.add('is-overflowing');
+      if (statsEl) {
+        statsEl.setText(`${itemCount} cards • ⚠️ Overflows page (+${Math.ceil(maxColH - availableHeight)}px)`);
+        statsEl.addClass('overflow-warn');
+        statsEl.removeClass('fit-active');
       }
+    } else if (autoFit && targetScale < 1) {
       pageSheet.classList.remove('is-overflowing');
       if (statsEl) {
         statsEl.setText(`${itemCount} cards • ${(targetScale * 100).toFixed(0)}% fit`);
         statsEl.removeClass('overflow-warn');
         statsEl.addClass('fit-active');
       }
-    } else if (autoFit) {
-      if (grid.style.zoom !== '1') {
-        grid.style.zoom = '1';
-      }
+    } else {
       pageSheet.classList.remove('is-overflowing');
       if (statsEl) {
         statsEl.setText(`${itemCount} card${itemCount !== 1 ? 's' : ''}`);
         statsEl.removeClass('overflow-warn', 'fit-active');
-      }
-    } else {
-      if (grid.style.zoom !== '1') {
-        grid.style.zoom = '1';
-      }
-      if (maxColH > availableHeight + 5) {
-        pageSheet.classList.add('is-overflowing');
-        if (statsEl) {
-          const overflowPx = Math.round(maxColH - availableHeight);
-          statsEl.setText(`${itemCount} cards • ⚠️ Overflows page (+${overflowPx}px)`);
-          statsEl.addClass('overflow-warn');
-          statsEl.removeClass('fit-active');
-        }
-      } else {
-        pageSheet.classList.remove('is-overflowing');
-        if (statsEl) {
-          statsEl.setText(`${itemCount} card${itemCount !== 1 ? 's' : ''}`);
-          statsEl.removeClass('overflow-warn', 'fit-active');
-        }
       }
     }
   }
@@ -658,18 +639,24 @@ export class NotesheetView extends ItemView implements NotesheetSyncSubscriber {
     printContainer.style.setProperty('--notesheet-columns', `${this.data.settings.columns}`);
 
     // Inject dynamic @page style for margins and page size
-    const marginInches = this.data.settings.margins === 'tight' ? '0.2in' : this.data.settings.margins === 'normal' ? '0.5in' : '0.25in';
+    const marginInches = this.data.settings.margins === 'tight' ? '0.2in' : this.data.settings.margins === 'normal' ? '0.5in' : '0.3in';
     const dynamicStyle = document.createElement('style');
     dynamicStyle.id = 'notesheet-print-dynamic-style';
     dynamicStyle.textContent = `@page { size: ${this.data.settings.pageSize} portrait; margin: ${marginInches}; }`;
     document.head.appendChild(dynamicStyle);
 
     const pages = this.createPrintPageElements();
+    // Measure with print typography and paper width, rather than the hidden .print
+    // container or an inherited editor zoom. Preview styles mirror print styles.
+    printContainer.addClass('notesheet-preview-container');
+    printContainer.style.cssText += '; display: block !important; position: fixed; left: -100000px; visibility: hidden;';
     pages.forEach((pageEl) => {
       printContainer.appendChild(pageEl);
       // Run fit calculation directly on the print clone to ensure exact 1-page fit
       this.updatePageFit(pageEl);
     });
+    printContainer.removeClass('notesheet-preview-container');
+    ['display', 'position', 'left', 'visibility'].forEach(prop => printContainer.style.removeProperty(prop));
 
     return printContainer;
   }
